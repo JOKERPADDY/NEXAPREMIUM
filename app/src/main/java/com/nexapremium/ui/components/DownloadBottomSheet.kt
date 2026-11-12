@@ -3,6 +3,7 @@ package com.nexapremium.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +31,7 @@ fun DownloadBottomSheet(
     seasonNumber: Int,
     episodes: List<EpisodeDto>,
     availableQualities: List<String> = listOf("360P", "480P", "1080P"),
+    preferredQuality: String = "Auto",
     playbackSources: List<MediaSourceDto> = emptyList(),
     episodePlaybackSources: Map<Int, List<MediaSourceDto>> = emptyMap(),
     episodeSourcesLoading: Boolean = false,
@@ -46,14 +48,20 @@ fun DownloadBottomSheet(
     }
     var selectedQuality by remember { mutableStateOf("") }
     var selectedSourceId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(qualities, playbackSources) {
+    LaunchedEffect(qualities, playbackSources, preferredQuality) {
         if (isMovie) {
             if (playbackSources.none { it.id == selectedSourceId }) {
-                selectedSourceId = playbackSources.firstOrNull()?.id
+                selectedSourceId = playbackSources.firstOrNull {
+                    preferredQuality.equals("Auto", ignoreCase = true) ||
+                        normalizeQuality(it.effectiveQuality) == normalizeQuality(preferredQuality)
+                }?.id ?: playbackSources.firstOrNull()?.id
             }
             selectedQuality = playbackSources.firstOrNull { it.id == selectedSourceId }?.effectiveQuality.orEmpty()
         } else if (selectedQuality !in qualities) {
-            selectedQuality = qualities.firstOrNull().orEmpty()
+            selectedQuality = qualities.firstOrNull {
+                !preferredQuality.equals("Auto", ignoreCase = true) &&
+                    normalizeQuality(it) == normalizeQuality(preferredQuality)
+            } ?: qualities.firstOrNull().orEmpty()
         }
     }
     val selectedSource = playbackSources.firstOrNull { it.id == selectedSourceId }
@@ -61,6 +69,14 @@ fun DownloadBottomSheet(
             it.effectiveQuality.trim().uppercase().removeSuffix("P") == selectedQuality.trim().uppercase().removeSuffix("P")
         }
     val selectedSizeText = formatDownloadSize(selectedSource?.sizeBytes) ?: "Size unavailable"
+    val hasUnknownSizeEstimate = when {
+        isMovie -> selectedSource?.sizeBytes?.let { it <= 0L } ?: true
+        episodeSourcesLoading -> false
+        else -> episodes.any { episode ->
+            val source = episodePlaybackSources[episode.effectiveEpisodeNumber]?.let { sourceForQuality(it, selectedQuality) }
+            source?.sizeBytes?.let { it <= 0L } ?: true
+        }
+    }
     val selectedEpisodes = remember { mutableStateMapOf<Int, Boolean>() }
 
     ModalBottomSheet(
@@ -97,12 +113,20 @@ fun DownloadBottomSheet(
             if (!isMovie && episodeSourcesLoading) {
                 Text("Loading episode sizes...", color = MutedGray, fontSize = 12.sp)
             }
+            if (hasUnknownSizeEstimate) {
+                Text(
+                    "The provider did not give an estimated size for some files, so free space cannot be prechecked for them.",
+                    color = MutedGray,
+                    fontSize = 12.sp
+                )
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 qualities.forEach { quality ->
                     val isSelected = selectedQuality == quality
+                    val qualityInteraction = remember(quality) { MutableInteractionSource() }
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -116,10 +140,11 @@ fun DownloadBottomSheet(
                                 color = if (isSelected) PrimaryRed else Color.Transparent,
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .clickable {
+                            .clickable(interactionSource = qualityInteraction, indication = null) {
                                 selectedQuality = quality
                                 selectedSourceId = playbackSources.firstOrNull { it.effectiveQuality == quality }?.id
-                            },
+                            }
+                            .tvFocusOutline(qualityInteraction, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -146,6 +171,7 @@ fun DownloadBottomSheet(
             ) {
                 items(displayEpisodes) { ep ->
                     val epNum = ep.effectiveEpisodeNumber
+                    val episodeInteraction = remember(epNum) { MutableInteractionSource() }
                     val isChecked = selectedEpisodes[epNum] ?: true // Default checked
                     val episodeSource = episodePlaybackSources[epNum]?.let { sources ->
                         sourceForQuality(sources, selectedQuality)
@@ -160,7 +186,10 @@ fun DownloadBottomSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { selectedEpisodes[epNum] = !(selectedEpisodes[epNum] ?: true) }
+                            .clickable(interactionSource = episodeInteraction, indication = null) {
+                                selectedEpisodes[epNum] = !(selectedEpisodes[epNum] ?: true)
+                            }
+                            .tvFocusOutline(episodeInteraction, RoundedCornerShape(6.dp))
                             .padding(vertical = 10.dp)
                     ) {
                         Icon(
@@ -254,13 +283,15 @@ fun DownloadBottomSheet(
 }
 
 private fun sourceForQuality(sources: List<MediaSourceDto>, quality: String): MediaSourceDto? {
-    val normalizedQuality = quality.trim().uppercase().removeSuffix("P")
+    val normalizedQuality = normalizeQuality(quality)
     return sources.firstOrNull {
         it.vipLocked != true &&
-            it.effectiveQuality.trim().uppercase().removeSuffix("P") == normalizedQuality &&
+            normalizeQuality(it.effectiveQuality) == normalizedQuality &&
             (it.format.equals("MP4", ignoreCase = true) || it.url?.contains(".mp4", ignoreCase = true) == true)
     }
 }
+
+private fun normalizeQuality(value: String): String = value.trim().uppercase().removeSuffix("P")
 
 private fun formatDownloadSize(sizeBytes: Long?): String? {
     if (sizeBytes == null || sizeBytes <= 0L) return null

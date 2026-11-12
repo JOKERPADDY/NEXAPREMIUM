@@ -5,11 +5,13 @@ import androidx.compose.runtime.Composable
 @Composable
 fun RecommendedScreen(
     onItemClick: (String, String) -> Unit,
-    onSectionClick: (String) -> Unit
+    onSectionClick: (String) -> Unit,
+    onSportsClick: (String, String) -> Unit
 ) {
     TabContentScreen(
         tabName = "recommended",
         onItemClick = onItemClick,
-        onSectionClick = onSectionClick
+        onSectionClick = onSectionClick,
+        onSportsClick = onSportsClick
     )
 }

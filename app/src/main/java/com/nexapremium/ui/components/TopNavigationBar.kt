@@ -2,7 +2,6 @@ package com.nexapremium.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
@@ -15,8 +14,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -53,27 +55,45 @@ fun TopNavigationBar(
             .background(PureBlack)
             .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
+        val initialTabFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            initialTabFocusRequester.requestFocus()
+        }
         // Row 1: Centered Brand Name & Search Icon on the right (YouCine style)
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "NEXAPREMIUM",
-                color = PrimaryRed,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "NEXA",
+                    color = PrimaryRed,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = "PREMIUM",
+                    color = PureWhite,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.5.sp
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val searchInteraction = remember { MutableInteractionSource() }
                 IconButton(
                     onClick = onSearchClick,
-                    modifier = Modifier.size(36.dp)
+                    interactionSource = searchInteraction,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .tvFocusOutline(searchInteraction, RoundedCornerShape(50))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -102,8 +122,12 @@ fun TopNavigationBar(
 
                 Column(
                     modifier = Modifier
-                        .focusable(interactionSource = interactionSource)
-                        .clickable { onTabSelected(tab.route) }
+                        .then(if (tab == youcineNavTabs.first()) Modifier.focusRequester(initialTabFocusRequester) else Modifier)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) { onTabSelected(tab.route) }
+                        .tvFocusOutline(interactionSource, RoundedCornerShape(4.dp))
                         .padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

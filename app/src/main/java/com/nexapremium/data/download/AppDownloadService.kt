@@ -38,9 +38,17 @@ class AppDownloadService : Service() {
         createNotificationChannel()
         serviceScope.launch {
             downloadManager.progress.collectLatest { transfers ->
-                val activeCount = transfers.values.count { downloadManager.isRunning(it.status) }
+                val activeCount = transfers.values.count {
+                    it.status == TransferStatus.CONNECTING || it.status == TransferStatus.DOWNLOADING
+                }
+                val queuedCount = transfers.values.count { it.status == TransferStatus.QUEUED }
+                val waitingForWifi = transfers.values.any { it.status == TransferStatus.WAITING_FOR_WIFI }
                 if (activeCount > 0) {
-                    updateForegroundNotification("$activeCount active download${if (activeCount == 1) "" else "s"}")
+                    updateForegroundNotification("$activeCount downloading${if (queuedCount > 0) " · $queuedCount queued" else ""}")
+                } else if (queuedCount > 0) {
+                    updateForegroundNotification("$queuedCount queued download${if (queuedCount == 1) "" else "s"}")
+                } else if (waitingForWifi) {
+                    updateForegroundNotification("Waiting for Wi-Fi to resume downloads")
                 } else if (commandHandled) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
@@ -65,9 +73,10 @@ class AppDownloadService : Service() {
                 commandHandled = true
             }
             ACTION_RESUME -> {
-                parseEntity(intent.getStringExtra(EXTRA_ENTITY))?.let(downloadManager::resumeTransfer)
+                parseEntity(intent.getStringExtra(EXTRA_ENTITY))?.let { downloadManager.resumeTransfer(it, forceResume = true) }
                 commandHandled = true
             }
+            ACTION_RECOVER_PENDING, null -> recoverIncompleteDownloads()
             else -> recoverIncompleteDownloads()
         }
         return START_STICKY
@@ -82,7 +91,9 @@ class AppDownloadService : Service() {
                 }
             }
             commandHandled = true
-            if (downloadManager.progress.value.values.none { downloadManager.isRunning(it.status) }) {
+            if (downloadManager.progress.value.values.none {
+                    downloadManager.isRunning(it.status) || it.status == TransferStatus.WAITING_FOR_WIFI
+                }) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -129,6 +140,7 @@ class AppDownloadService : Service() {
         const val ACTION_START = "com.nexapremium.download.START"
         const val ACTION_PAUSE = "com.nexapremium.download.PAUSE"
         const val ACTION_RESUME = "com.nexapremium.download.RESUME"
+        const val ACTION_RECOVER_PENDING = "com.nexapremium.download.RECOVER_PENDING"
         const val EXTRA_ENTITY = "download_entity"
         const val EXTRA_REQUEST = "download_request"
         const val EXTRA_ID = "download_id"

@@ -15,39 +15,48 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.nexapremium.ui.viewmodel.SettingsViewModel
 import com.nexapremium.core.ui.theme.*
+import com.nexapremium.data.repository.DownloadPreferencesRepository
+import com.nexapremium.data.repository.PlaybackPreferencesRepository
+import com.nexapremium.data.update.AppUpdateChecker
+import com.nexapremium.data.update.AppUpdateInfo
+import com.nexapremium.ui.components.AppUpdateDialog
+import com.nexapremium.ui.components.TelegramPromptDialog
+import com.nexapremium.ui.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val familyModeEnabled by viewModel.familyModeEnabled.collectAsState()
-    val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
-    val autoMiniplayerEnabled by viewModel.autoMiniplayerEnabled.collectAsState()
-    val backgroundDownloadEnabled by viewModel.backgroundDownloadEnabled.collectAsState()
-
+    val wifiOnlyDownloads by viewModel.wifiOnlyDownloads.collectAsState()
+    val defaultDownloadQuality by viewModel.defaultDownloadQuality.collectAsState()
+    val autoDeleteWatchedEpisodes by viewModel.autoDeleteWatchedEpisodes.collectAsState()
+    val defaultPlaybackSpeed by viewModel.defaultPlaybackSpeed.collectAsState()
+    val autoPictureInPicture by viewModel.autoPictureInPicture.collectAsState()
     var infoDialogTitle by remember { mutableStateOf<String?>(null) }
     var infoDialogContent by remember { mutableStateOf<String?>(null) }
-
-    val scrollState = rememberScrollState()
+    var updateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var showTelegramDialog by remember { mutableStateOf(false) }
+    var showDownloadQualityMenu by remember { mutableStateOf(false) }
+    var showPlaybackSpeedMenu by remember { mutableStateOf(false) }
 
     if (infoDialogTitle != null && infoDialogContent != null) {
         AlertDialog(
             onDismissRequest = { infoDialogTitle = null },
-            title = {
-                Text(text = infoDialogTitle!!, color = PureWhite, style = Typography.titleLarge)
-            },
+            title = { Text(text = infoDialogTitle!!, color = PureWhite, style = Typography.titleLarge) },
             text = {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 350.dp)
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(text = infoDialogContent!!, color = MutedGray, fontSize = 14.sp, lineHeight = 20.sp)
-                }
+                Text(
+                    text = infoDialogContent!!,
+                    color = MutedGray,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.heightIn(max = 350.dp).verticalScroll(rememberScrollState()).padding(vertical = 8.dp)
+                )
             },
             confirmButton = {
                 TextButton(onClick = { infoDialogTitle = null }) {
@@ -59,127 +68,132 @@ fun SettingsScreen(
         )
     }
 
+    updateInfo?.let { info ->
+        AppUpdateDialog(updateInfo = info, onDismiss = { updateInfo = null })
+    }
+
+    if (showTelegramDialog) {
+        TelegramPromptDialog(onDismiss = { showTelegramDialog = false })
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(PureBlack)
-            .verticalScroll(scrollState)
+            .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
-        Text(
-            text = "Settings",
-            style = Typography.headlineLarge,
-            color = PureWhite
-        )
+        Text(text = "Settings", style = Typography.headlineLarge, color = PureWhite)
         Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "Your app and preferences",
-            color = MutedGray,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(bottom = 10.dp)
-        )
+        Text("Preferences", color = MutedGray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
 
-        // Preferences Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = DarkSurface)
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                // Family Mode
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Family Mode", color = PureWhite, fontSize = 16.sp)
-                        Text(text = "Helps hide potentially mature videos.", color = MutedGray, fontSize = 12.sp)
-                    }
-                    Switch(
-                        checked = familyModeEnabled,
-                        onCheckedChange = viewModel::setFamilyModeEnabled,
-                        colors = SwitchDefaults.colors(checkedThumbColor = PureWhite, checkedTrackColor = PrimaryRed)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text("Family Mode", color = PureWhite, fontSize = 16.sp)
+                    Text(
+                        "Uses available provider flags and tags to filter some mature titles. It may miss content or hide safe titles, so it is not a parental control.",
+                        color = MutedGray,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
                     )
                 }
+                Switch(
+                    checked = familyModeEnabled,
+                    onCheckedChange = viewModel::setFamilyModeEnabled,
+                    colors = SwitchDefaults.colors(checkedThumbColor = PureWhite, checkedTrackColor = PrimaryRed)
+                )
+            }
+        }
 
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Downloads & playback", color = MutedGray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                PreferenceSwitchRow(
+                    title = "Download over Wi-Fi only",
+                    subtitle = "Wait for Wi-Fi before starting or resuming downloads.",
+                    checked = wifiOnlyDownloads,
+                    onCheckedChange = viewModel::setWifiOnlyDownloads
+                )
                 HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
-
-                // Notifications
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Notifications", color = PureWhite, fontSize = 16.sp)
-                        Text(text = "Receive alerts for new releases and updates.", color = MutedGray, fontSize = 12.sp)
-                    }
-                    Switch(
-                        checked = notificationsEnabled,
-                        onCheckedChange = viewModel::setNotificationsEnabled,
-                        colors = SwitchDefaults.colors(checkedThumbColor = PureWhite, checkedTrackColor = PrimaryRed)
+                Box {
+                    SettingsActionRow(
+                        title = "Default download quality",
+                        subtitle = defaultDownloadQuality,
+                        onClick = { showDownloadQualityMenu = true }
                     )
+                    DropdownMenu(
+                        expanded = showDownloadQualityMenu,
+                        onDismissRequest = { showDownloadQualityMenu = false },
+                        modifier = Modifier.background(DarkSurface)
+                    ) {
+                        DownloadPreferencesRepository.DOWNLOAD_QUALITIES.forEach { quality ->
+                            DropdownMenuItem(
+                                text = { Text(quality, color = PureWhite) },
+                                onClick = {
+                                    viewModel.setDefaultDownloadQuality(quality)
+                                    showDownloadQualityMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
-
                 HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
-
-                // Auto activate miniplayer
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Auto Activate Miniplayer", color = PureWhite, fontSize = 16.sp)
-                        Text(text = "Play video in miniplayer when leaving screen.", color = MutedGray, fontSize = 12.sp)
-                    }
-                    Switch(
-                        checked = autoMiniplayerEnabled,
-                        onCheckedChange = viewModel::setAutoMiniplayerEnabled,
-                        colors = SwitchDefaults.colors(checkedThumbColor = PureWhite, checkedTrackColor = PrimaryRed)
-                    )
-                }
-
+                PreferenceSwitchRow(
+                    title = "Delete watched episodes",
+                    subtitle = "Remove a downloaded episode after playback finishes.",
+                    checked = autoDeleteWatchedEpisodes,
+                    onCheckedChange = viewModel::setAutoDeleteWatchedEpisodes
+                )
                 HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
-
-                // Download in background
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Download in Background", color = PureWhite, fontSize = 16.sp)
-                        Text(text = "Continue downloading when app is minimized.", color = MutedGray, fontSize = 12.sp)
-                    }
-                    Switch(
-                        checked = backgroundDownloadEnabled,
-                        onCheckedChange = viewModel::setBackgroundDownloadEnabled,
-                        colors = SwitchDefaults.colors(checkedThumbColor = PureWhite, checkedTrackColor = PrimaryRed)
+                PreferenceSwitchRow(
+                    title = "Enter picture-in-picture automatically",
+                    subtitle = "Keep playback in a small window when you leave the player.",
+                    checked = autoPictureInPicture,
+                    onCheckedChange = viewModel::setAutoPictureInPicture
+                )
+                HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
+                Box {
+                    SettingsActionRow(
+                        title = "Default playback speed",
+                        subtitle = "${defaultPlaybackSpeed}x",
+                        onClick = { showPlaybackSpeedMenu = true }
                     )
+                    DropdownMenu(
+                        expanded = showPlaybackSpeedMenu,
+                        onDismissRequest = { showPlaybackSpeedMenu = false },
+                        modifier = Modifier.background(DarkSurface)
+                    ) {
+                        PlaybackPreferencesRepository.PLAYBACK_SPEEDS.forEach { speed ->
+                            DropdownMenuItem(
+                                text = { Text("${speed}x", color = PureWhite) },
+                                onClick = {
+                                    viewModel.setDefaultPlaybackSpeed(speed)
+                                    showPlaybackSpeedMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+        Text("App information", color = MutedGray, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
 
-        Text(
-            text = "About & Legal",
-            color = MutedGray,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(bottom = 10.dp)
-        )
-
-        // About & Legal Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -187,41 +201,88 @@ fun SettingsScreen(
         ) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 SettingsActionRow(
-                    title = "Check Update",
-                    subtitle = "Current Version ${viewModel.appVersion}",
-                    onClick = { Toast.makeText(context, "You are using the latest version (${viewModel.appVersion})", Toast.LENGTH_SHORT).show() }
-                )
-                HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
-                SettingsActionRow(
-                    title = "About Us",
-                    subtitle = "NEXAPREMIUM Streaming Service",
+                    title = "Check for updates",
+                    subtitle = if (isCheckingUpdate) "Checking…" else "Installed version ${viewModel.appVersion}",
                     onClick = {
-                        infoDialogTitle = "About Us"
-                        infoDialogContent = "Welcome to NEXAPREMIUM, your ultimate destination for high-definition streaming of movies, series, anime, and kids' entertainment.\n\nDesigned with a sleek Netflix-inspired red and black interface, NEXAPREMIUM delivers lightning-fast streaming, smart downloads for offline viewing, multi-audio/dub support, and personalized recommendations.\n\nOur mission is to provide an immersive, ad-free, and cinematic entertainment experience across mobile, tablet, Android TV, and Fire TV devices."
+                        if (!isCheckingUpdate) {
+                            scope.launch {
+                                isCheckingUpdate = true
+                                val result = runCatching { AppUpdateChecker.checkUpdate(context) }
+                                isCheckingUpdate = false
+                                result.onSuccess { info ->
+                                    when {
+                                        info.checkFailed -> Toast.makeText(context, "Couldn't check for updates. Try again later.", Toast.LENGTH_LONG).show()
+                                        info.hasUpdate -> updateInfo = info
+                                        else -> Toast.makeText(context, "You're up to date (${info.currentVersion}).", Toast.LENGTH_SHORT).show()
+                                    }
+                                }.onFailure {
+                                    Toast.makeText(context, "Couldn't check for updates. Try again later.", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
                     }
                 )
                 HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
                 SettingsActionRow(
-                    title = "Privacy and Policy",
-                    subtitle = "Read our data & privacy policy",
+                    title = "About NEXAPREMIUM",
+                    subtitle = "How the app works",
                     onClick = {
-                        infoDialogTitle = "Privacy and Policy"
-                        infoDialogContent = "Last updated: May 2024\n\nAt NEXAPREMIUM, we respect your privacy and are committed to protecting your personal data.\n\n1. Information Collection: We collect minimal usage data and preference settings (such as Family Mode and download preferences) locally on your device.\n\n2. Data Security: All network requests and streaming connections are encrypted using industry-standard SSL/TLS protocols.\n\n3. Third-Party Services: We do not sell, trade, or rent your personal identification information to third parties.\n\n4. Your Rights: You have full control over your stored data, local downloads, and app settings at all times. You can clear all cached and downloaded content directly from the app."
+                        infoDialogTitle = "About NEXAPREMIUM"
+                        infoDialogContent = "NEXAPREMIUM is an Android app for browsing and playing catalog titles. Catalog and stream availability depends on the remote services configured for the app. Watchlist items, playback progress, and downloads are stored on this device."
                     }
                 )
                 HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
                 SettingsActionRow(
-                    title = "User Agreement",
-                    subtitle = "Terms of service and usage",
+                    title = "Data & privacy",
+                    subtitle = "What the app stores and sends",
                     onClick = {
-                        infoDialogTitle = "User Agreement"
-                        infoDialogContent = "Last updated: May 2024\n\nBy accessing or using NEXAPREMIUM, you agree to be bound by these User Agreement terms.\n\n1. License & Usage: NEXAPREMIUM is provided for personal, non-commercial entertainment use. Redistribution, reverse engineering, or unauthorized commercial exploitation of app content is strictly prohibited.\n\n2. User Conduct: Users agree not to use the platform for any unlawful activities or in violation of regional copyright and streaming laws.\n\n3. Content Disclaimer: Streaming content is sourced via supported media pipelines. NEXAPREMIUM does not host copyrighted media files directly on its servers.\n\n4. Modifications: We reserve the right to modify, update, or discontinue features or services at any time without prior notice."
+                        infoDialogTitle = "Data & privacy"
+                        infoDialogContent = "The app stores your watchlist, playback progress, downloads, and Family Mode preference on this device. There is no sign-in or cross-device sync. To load catalog pages, search, title details, playback links, and captions, the app sends requests to its configured remote services. Video and caption data may be served from remote provider hosts. Removing the app removes its private local data and downloads."
                     }
+                )
+                HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
+                SettingsActionRow(
+                    title = "Usage terms",
+                    subtitle = "Availability and permitted use",
+                    onClick = {
+                        infoDialogTitle = "Usage terms"
+                        infoDialogContent = "Use this app and its connected services only where you are authorized to access them, and follow the applicable service terms and local rules. Catalog listings, playback links, and offline availability are provided by remote services and may change or stop working. NEXAPREMIUM does not provide an account or cloud backup for your watchlist, progress, or downloads."
+                    }
+                )
+                HorizontalDivider(color = SecondarySurface, thickness = 1.dp)
+                SettingsActionRow(
+                    title = "Join Telegram Channel",
+                    subtitle = "Get updates, movie releases & community support",
+                    onClick = { showTelegramDialog = true }
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun PreferenceSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, color = PureWhite, fontSize = 16.sp)
+            Text(subtitle, color = MutedGray, fontSize = 12.sp, lineHeight = 17.sp)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(checkedThumbColor = PureWhite, checkedTrackColor = PrimaryRed)
+        )
     }
 }
 
@@ -232,10 +293,7 @@ fun SettingsActionRow(
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

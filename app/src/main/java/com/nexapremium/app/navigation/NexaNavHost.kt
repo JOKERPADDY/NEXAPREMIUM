@@ -44,7 +44,25 @@ fun NexaNavHost(
         }
 
         composable(Screen.Recommended.route) {
-            RecommendedScreen(onItemClick = onItemClick, onSectionClick = onSectionClick)
+            RecommendedScreen(
+                onItemClick = onItemClick,
+                onSectionClick = onSectionClick,
+                onSportsClick = { id, title -> navController.navigate(Screen.SportsPlayer.createRoute(id, title)) }
+            )
+        }
+
+        composable(
+            route = Screen.SportsPlayer.route,
+            arguments = listOf(
+                navArgument("matchId") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType }
+            )
+        ) { entry ->
+            SportsPlayerScreen(
+                matchId = Uri.decode(entry.arguments?.getString("matchId").orEmpty()),
+                title = Uri.decode(entry.arguments?.getString("title").orEmpty()),
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(
@@ -84,33 +102,37 @@ fun NexaNavHost(
             SearchScreen(
                 initialQuery = initialQuery,
                 onBackClick = { navController.popBackStack() },
-                onItemClick = { detailPath ->
-                    navController.navigate(Screen.MovieDetail.createRoute(detailPath))
-                }
+                onItemClick = onItemClick
             )
         }
 
         composable(Screen.MyList.route) {
             MyListScreen(
-                onItemClick = { detailPath ->
-                    navController.navigate(Screen.MovieDetail.createRoute(detailPath))
-                }
+                onItemClick = onItemClick
             )
         }
 
         composable(Screen.ContinueWatching.route) {
             ContinueWatchingScreen(
                 onItemClick = { item ->
-                    navController.navigate(Screen.Player.createRoute(item.detailPath, item.seasonNumber, item.episodeNumber))
+                    navController.navigate(Screen.Player.createRoute(item.detailPath, item.seasonNumber, item.episodeNumber, coverUrl = item.coverUrl))
                 }
             )
         }
 
         composable(Screen.Downloads.route) {
             DownloadsScreen(
-                onItemClick = { detailPath ->
-                    navController.navigate(Screen.Player.createRoute(detailPath, offline = true))
-                }
+                onItemClick = { detailPath, season, episode, coverUrl ->
+                    navController.navigate(Screen.Player.createRoute(detailPath, season, episode, offline = true, coverUrl = coverUrl))
+                },
+                onBrowseClick = {
+                    navController.navigate(Screen.Recommended.route) {
+                        popUpTo(Screen.Recommended.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onOpenTitle = onItemClick
             )
         }
 
@@ -126,8 +148,8 @@ fun NexaNavHost(
             val detailPath = Uri.decode(encodedDetailPath)
             MovieDetailScreen(
                 detailPath = detailPath,
-                onPlayClick = { path, season, episode ->
-                    navController.navigate(Screen.Player.createRoute(path, season, episode))
+                onPlayClick = { path, season, episode, coverUrl ->
+                    navController.navigate(Screen.Player.createRoute(path, season, episode, coverUrl = coverUrl))
                 }
             )
         }
@@ -140,8 +162,8 @@ fun NexaNavHost(
             val detailPath = Uri.decode(encodedDetailPath)
             SeriesDetailScreen(
                 detailPath = detailPath,
-                onPlayClick = { path, season, episode ->
-                    navController.navigate(Screen.Player.createRoute(path, season, episode))
+                onPlayClick = { path, season, episode, coverUrl ->
+                    navController.navigate(Screen.Player.createRoute(path, season, episode, coverUrl = coverUrl))
                 }
             )
         }
@@ -152,7 +174,8 @@ fun NexaNavHost(
                 navArgument("detailPath") { type = NavType.StringType },
                 navArgument("season") { type = NavType.IntType; defaultValue = 0 },
                 navArgument("episode") { type = NavType.IntType; defaultValue = 0 },
-                navArgument("offline") { type = NavType.BoolType; defaultValue = false }
+                navArgument("offline") { type = NavType.BoolType; defaultValue = false },
+                navArgument("coverUrl") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val encodedDetailPath = backStackEntry.arguments?.getString("detailPath") ?: ""
@@ -160,12 +183,14 @@ fun NexaNavHost(
             val season = backStackEntry.arguments?.getInt("season") ?: 0
             val episode = backStackEntry.arguments?.getInt("episode") ?: 0
             val offline = backStackEntry.arguments?.getBoolean("offline") ?: false
+            val coverUrl = backStackEntry.arguments?.getString("coverUrl").orEmpty()
 
             VideoPlayerScreen(
                 detailPath = detailPath,
                 season = season,
                 episode = episode,
                 offlineOnly = offline,
+                coverUrl = coverUrl,
                 onBackClick = { navController.popBackStack() }
             )
         }

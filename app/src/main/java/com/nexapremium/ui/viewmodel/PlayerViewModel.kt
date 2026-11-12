@@ -6,6 +6,9 @@ import com.nexapremium.data.api.model.CaptionItemDto
 import com.nexapremium.data.api.model.PlaybackDataDto
 import com.nexapremium.data.repository.LocalDatabaseRepository
 import com.nexapremium.data.repository.PlaybackRepository
+import com.nexapremium.data.repository.DownloadPreferencesRepository
+import com.nexapremium.data.repository.PlaybackPreferencesRepository
+import com.nexapremium.data.download.AppDownloadManager
 import com.nexapremium.data.db.entity.DownloadEntity
 import java.io.File
 import com.nexapremium.data.db.entity.ContinueWatchingEntity
@@ -28,18 +31,43 @@ sealed interface PlayerUiState {
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val playbackRepository: PlaybackRepository,
-    private val localDatabaseRepository: LocalDatabaseRepository
+    private val localDatabaseRepository: LocalDatabaseRepository,
+    private val downloadPreferencesRepository: DownloadPreferencesRepository,
+    private val playbackPreferencesRepository: PlaybackPreferencesRepository,
+    private val appDownloadManager: AppDownloadManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+    val defaultPlaybackSpeed: StateFlow<Float> = playbackPreferencesRepository.defaultSpeed
+
+    fun setDefaultPlaybackSpeed(speed: Float) {
+        playbackPreferencesRepository.setDefaultSpeed(speed)
+    }
+
+    fun onPlaybackEnded(detailPath: String, season: Int, episode: Int) {
+        viewModelScope.launch {
+            localDatabaseRepository.removeContinueWatching(detailPath)
+            if (season <= 0 || episode <= 0 || !downloadPreferencesRepository.autoDeleteWatchedEpisodes.value) return@launch
+            val episodeIdSuffix = "_S${season}E${episode}"
+            val download = localDatabaseRepository.getAllDownloadsOnce().firstOrNull {
+                it.detailPath == detailPath && it.id.endsWith(episodeIdSuffix)
+            } ?: return@launch
+            appDownloadManager.cancel(download)
+            localDatabaseRepository.deleteDownload(download.id)
+        }
+    }
 
     fun loadPlayback(detailPath: String, season: Int = 0, episode: Int = 0, offlineOnly: Boolean = false) {
         viewModelScope.launch {
             _uiState.value = PlayerUiState.Loading
             if (offlineOnly) {
                 val download = localDatabaseRepository.getAllDownloadsOnce()
-                    .firstOrNull { it.detailPath == detailPath && File(it.filePath).isFile }
+                    .firstOrNull {
+                        it.detailPath == detailPath &&
+                            it.id.endsWith("_S${season}E${episode}") &&
+                            File(it.filePath).isFile
+                    }
                 _uiState.value = download?.let(PlayerUiState::Offline)
                     ?: PlayerUiState.Error("This download is missing from the device")
                 return@launch

@@ -34,14 +34,23 @@ sealed class Screen(val route: String) {
             return "series_detail/$encoded"
         }
     }
-    object Player : Screen("player/{detailPath}?season={season}&episode={episode}&offline={offline}") {
-        fun createRoute(detailPath: String, season: Int = 0, episode: Int = 0, offline: Boolean = false): String {
+    object Player : Screen("player/{detailPath}?season={season}&episode={episode}&offline={offline}&coverUrl={coverUrl}") {
+        fun createRoute(
+            detailPath: String,
+            season: Int = 0,
+            episode: Int = 0,
+            offline: Boolean = false,
+            coverUrl: String = ""
+        ): String {
             val encoded = Uri.encode(detailPath)
-            return "player/$encoded?season=$season&episode=$episode&offline=$offline"
+            return "player/$encoded?season=$season&episode=$episode&offline=$offline&coverUrl=${Uri.encode(coverUrl)}"
         }
     }
     object MyList : Screen("mylist")
     object ContinueWatching : Screen("continuewatching")
     object Downloads : Screen("downloads")
+    object SportsPlayer : Screen("sports_player/{matchId}/{title}") {
+        fun createRoute(matchId: String, title: String) = "sports_player/${android.net.Uri.encode(matchId)}/${android.net.Uri.encode(title)}"
+    }
     object Settings : Screen("settings")
 }

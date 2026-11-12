@@ -19,7 +19,7 @@ import com.nexapremium.core.ui.theme.Typography
 
 @Composable
 fun MyListScreen(
-    onItemClick: (String) -> Unit,
+    onItemClick: (String, String) -> Unit,
     viewModel: MyListViewModel = hiltViewModel()
 ) {
     val myList by viewModel.myList.collectAsState()
@@ -45,7 +45,15 @@ fun MyListScreen(
                 FocusableCard(
                     imageUrl = item.coverUrl,
                     title = item.title,
-                    onClick = { onItemClick(item.detailPath) }
+                    onClick = {
+                        val detailPath = item.detailPath.trimStart('/')
+                        val subjectType = if (detailPath.startsWith("series/", ignoreCase = true)) {
+                            "series"
+                        } else {
+                            item.subjectType
+                        }
+                        onItemClick(item.detailPath, subjectType)
+                    }
                 )
             }
         }

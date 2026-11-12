@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,21 +30,30 @@ import com.nexapremium.core.ui.theme.*
 import com.nexapremium.data.api.model.EpisodeDto
 import com.nexapremium.data.api.model.MediaSourceDto
 import com.nexapremium.ui.components.DownloadBottomSheet
+import com.nexapremium.ui.components.rememberDownloadPermissionRequester
 import com.nexapremium.ui.components.FocusableButton
 import com.nexapremium.ui.components.FocusableCard
+import com.nexapremium.ui.components.isTelevisionDevice
 import com.nexapremium.ui.viewmodel.DetailUiState
 import com.nexapremium.ui.viewmodel.DetailViewModel
 
 @Composable
-fun MovieBadgeItem(text: String) {
+fun MovieBadgeItem(
+    text: String,
+    textColor: Color = MutedGray,
+    containerColor: Color = DarkSurface,
+    border: androidx.compose.foundation.BorderStroke? = null
+) {
     Surface(
-        color = DarkSurface,
-        shape = RoundedCornerShape(4.dp)
+        color = containerColor,
+        shape = RoundedCornerShape(4.dp),
+        border = border
     ) {
         Text(
             text = text,
-            color = MutedGray,
+            color = textColor,
             fontSize = 12.sp,
+            fontWeight = if (textColor != MutedGray) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
@@ -52,11 +62,14 @@ fun MovieBadgeItem(text: String) {
 @Composable
 fun MovieDetailScreen(
     detailPath: String,
-    onPlayClick: (String, Int, Int) -> Unit,
+    onPlayClick: (String, Int, Int, String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val requestPermissionThenDownload = rememberDownloadPermissionRequester()
+    val isTelevision = remember(context) { isTelevisionDevice(context) }
     val uiState by viewModel.uiState.collectAsState()
+    val preferredDownloadQuality by viewModel.defaultDownloadQuality.collectAsState()
 
     LaunchedEffect(detailPath) {
         viewModel.loadDetail(detailPath)
@@ -125,7 +138,7 @@ fun MovieDetailScreen(
                         )
                         // Play Button Overlay
                         IconButton(
-                            onClick = { onPlayClick(detailPath, data.selectedSeason, if (data.episodes.isNotEmpty()) 1 else 0) },
+                            onClick = { onPlayClick(detailPath, data.selectedSeason, if (data.episodes.isNotEmpty()) 1 else 0, movie.cover?.url.orEmpty()) },
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .size(64.dp)
@@ -156,7 +169,12 @@ fun MovieDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             MovieBadgeItem(if (data.seasons.isNotEmpty()) "TV Series" else "Movie")
-                            MovieBadgeItem("★ ${String.format("%.1f", movie.score ?: 0.0)}")
+                            MovieBadgeItem(
+                                text = "★ ${String.format("%.1f", movie.score ?: 0.0)}",
+                                textColor = Color(0xFFFFC107),
+                                containerColor = Color(0xFF2A230B),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFC107).copy(alpha = 0.6f))
+                            )
                             movie.releaseYear?.let { yr -> MovieBadgeItem("$yr") }
                             if (data.seasons.isNotEmpty()) {
                                 MovieBadgeItem("${data.seasons.size} Seasons")
@@ -178,7 +196,8 @@ fun MovieDetailScreen(
                                     viewModel.toggleBookmark(
                                         detailPath = detailPath,
                                         title = movie.title ?: "",
-                                        coverUrl = movie.cover?.url ?: ""
+                                        coverUrl = movie.cover?.url ?: "",
+                                        subjectType = if (data.seasons.isNotEmpty()) "series" else "movie"
                                     )
                                 },
                                 isPrimary = false,
@@ -190,14 +209,14 @@ fun MovieDetailScreen(
                                 isPrimary = false,
                                 modifier = Modifier.weight(1f)
                             )
-                            FocusableButton(
-                                text = "Download",
-                                onClick = {
-                                    showDownloadBottomSheet = true
-                                },
-                                isPrimary = true,
-                                modifier = Modifier.weight(1f)
-                            )
+                            if (!isTelevision) {
+                                FocusableButton(
+                                    text = "Download",
+                                    onClick = { showDownloadBottomSheet = true },
+                                    isPrimary = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -293,7 +312,7 @@ fun MovieDetailScreen(
                                         isSelected = selectedPillIndex == null,
                                         onClick = {
                                             selectedPillIndex = null
-                                            onPlayClick(detailPath, data.selectedSeason, 1)
+                                            onPlayClick(detailPath, data.selectedSeason, 1, movie.cover?.url.orEmpty())
                                         }
                                     )
                                 }
@@ -305,7 +324,7 @@ fun MovieDetailScreen(
                                         isSelected = selectedPillIndex == index,
                                         onClick = {
                                             selectedPillIndex = index
-                                            onPlayClick(detailPath, data.selectedSeason, epNum)
+                                            onPlayClick(detailPath, data.selectedSeason, epNum, movie.cover?.url.orEmpty())
                                         }
                                     )
                                 }
@@ -333,7 +352,7 @@ fun MovieDetailScreen(
                                         badgeText = item.badgeText,
                                         onClick = {
                                             item.detailPath?.let { path ->
-                                                onPlayClick(path, 0, 0)
+                                                onPlayClick(path, 0, 0, item.effectiveCoverUrl.orEmpty())
                                             }
                                         },
                                         modifier = Modifier.width(115.dp)
@@ -344,25 +363,28 @@ fun MovieDetailScreen(
                     }
                 }
 
-                if (showDownloadBottomSheet) {
+                if (showDownloadBottomSheet && !isTelevision) {
                     DownloadBottomSheet(
                         titleName = movie.title ?: "Movie",
                         seasonNumber = if (data.selectedSeason == 0) 1 else data.selectedSeason,
                         episodes = data.episodes,
                         availableQualities = availableQualities,
                         playbackSources = downloadSources,
+                        preferredQuality = preferredDownloadQuality,
                         isMovie = isMovie,
                         onDismiss = { showDownloadBottomSheet = false },
                         onDownloadEpisodes = { selectedEps, resolution, sourceId ->
-                            viewModel.downloadTitle(
-                                context = context,
-                                detailPath = detailPath,
-                                titleName = "${movie.title} ($resolution)",
-                                season = data.selectedSeason,
-                                episode = 0,
-                                quality = resolution,
-                                sourceId = sourceId
-                            )
+                            requestPermissionThenDownload {
+                                viewModel.downloadTitle(
+                                    context = context,
+                                    detailPath = detailPath,
+                                    titleName = movie.title ?: "Movie",
+                                    season = data.selectedSeason,
+                                    episode = 0,
+                                    quality = resolution,
+                                    sourceId = sourceId
+                                )
+                            }
                         }
                     )
                 }

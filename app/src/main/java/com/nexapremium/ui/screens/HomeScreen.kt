@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -15,9 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexapremium.ui.components.FocusableButton
 import com.nexapremium.ui.components.HorizontalCarousel
+import com.nexapremium.ui.components.CatalogLoadingSkeleton
 import com.nexapremium.ui.viewmodel.HomeUiState
 import com.nexapremium.ui.viewmodel.HomeViewModel
-import com.nexapremium.core.ui.theme.PrimaryRed
 import com.nexapremium.core.ui.theme.PureBlack
 import com.nexapremium.core.ui.theme.PureWhite
 
@@ -36,10 +35,7 @@ fun HomeScreen(
     ) {
         when (val state = uiState) {
             is HomeUiState.Loading -> {
-                CircularProgressIndicator(
-                    color = PrimaryRed,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                CatalogLoadingSkeleton()
             }
             is HomeUiState.Success -> {
                 LazyColumn(

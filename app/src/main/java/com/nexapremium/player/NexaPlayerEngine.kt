@@ -3,10 +3,12 @@ package com.nexapremium.player
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import com.nexapremium.data.api.NexaHeaderInterceptor
 import com.nexapremium.data.api.model.MediaSourceDto
 import okhttp3.OkHttpClient
@@ -39,6 +41,8 @@ class NexaPlayerEngine @Inject constructor(
         }
         return exoPlayer!!
     }
+
+    fun currentPlayer(): ExoPlayer? = exoPlayer
 
     @OptIn(UnstableApi::class)
     fun prepareMedia(
@@ -93,8 +97,27 @@ class NexaPlayerEngine @Inject constructor(
         val dataSourceFactory = OkHttpDataSource.Factory(mediaOkHttpClient)
             .setDefaultRequestProperties(headers)
 
-        val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(mediaUrl))
+        val isHls = source.format.equals("HLS", ignoreCase = true) ||
+            mediaUrl.substringBefore('?').endsWith(".m3u8", ignoreCase = true)
+        val mediaItem = MediaItem.Builder().setUri(mediaUrl)
+            .apply {
+                if (isHls) setMimeType(MimeTypes.APPLICATION_M3U8)
+                if (isHls && cleanPath.startsWith("sports/")) {
+                    setLiveConfiguration(
+                        MediaItem.LiveConfiguration.Builder()
+                            .setTargetOffsetMs(15_000L)
+                            .setMinOffsetMs(10_000L)
+                            .setMaxOffsetMs(30_000L)
+                            .build()
+                    )
+                }
+            }
+            .build()
+        val mediaSource = if (isHls) {
+            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        } else {
+            ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        }
 
         player.setMediaSource(mediaSource)
         player.prepare()

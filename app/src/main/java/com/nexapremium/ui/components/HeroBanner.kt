@@ -3,6 +3,7 @@ package com.nexapremium.ui.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -11,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,13 +36,16 @@ fun HeroBanner(
     onItemClick: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val configuration = LocalConfiguration.current
+    val isTelevision = (configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+        android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
     val featuredBanners = banners.take(4)
     if (featuredBanners.isEmpty()) return
 
     val pagerState = rememberPagerState(pageCount = { featuredBanners.size })
 
-    LaunchedEffect(featuredBanners.size) {
-        while (featuredBanners.size > 1) {
+    LaunchedEffect(featuredBanners.size, isTelevision) {
+        while (featuredBanners.size > 1 && !isTelevision) {
             delay(3_000)
             pagerState.animateScrollToPage((pagerState.currentPage + 1) % featuredBanners.size)
         }
@@ -57,16 +63,21 @@ fun HeroBanner(
         ) { page ->
             val banner = featuredBanners[page]
             val imageUrl = banner.backdropUrl ?: banner.effectiveCoverUrl
+            val bannerInteraction = remember(page) { MutableInteractionSource() }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable {
+                    .clickable(
+                        interactionSource = bannerInteraction,
+                        indication = null
+                    ) {
                         val path = banner.detailPath
                         if (!path.isNullOrEmpty()) {
                             onItemClick(path, banner.effectiveSubjectType)
                         }
                     }
+                    .tvFocusOutline(bannerInteraction, RoundedCornerShape(8.dp))
             ) {
                 SubcomposeAsyncImage(
                     model = imageUrl,

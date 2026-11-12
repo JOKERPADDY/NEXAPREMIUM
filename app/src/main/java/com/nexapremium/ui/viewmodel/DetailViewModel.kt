@@ -15,11 +15,13 @@ import com.nexapremium.data.api.model.SubjectItemDto
 import com.nexapremium.data.api.model.TagDto
 import com.nexapremium.data.db.entity.DownloadEntity
 import com.nexapremium.data.download.AppDownloadManager
+import com.nexapremium.data.download.DownloadStorage
 import com.nexapremium.data.db.entity.MyListEntity
 import com.nexapremium.data.repository.DetailRepository
 import com.nexapremium.data.repository.FamilyModeRepository
 import com.nexapremium.data.repository.LocalDatabaseRepository
 import com.nexapremium.data.repository.PlaybackRepository
+import com.nexapremium.data.repository.DownloadPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -57,11 +59,13 @@ class DetailViewModel @Inject constructor(
     private val playbackRepository: PlaybackRepository,
     private val appDownloadManager: AppDownloadManager,
     private val localDatabaseRepository: LocalDatabaseRepository,
-    private val familyModeRepository: FamilyModeRepository
+    private val familyModeRepository: FamilyModeRepository,
+    private val downloadPreferencesRepository: DownloadPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
+    val defaultDownloadQuality: StateFlow<String> = downloadPreferencesRepository.defaultQuality
     private var loadedTitle: SubjectItemDto? = null
     private var loadedDetailPath: String? = null
     private var unfilteredRecommendations: List<SubjectItemDto> = emptyList()
@@ -263,8 +267,21 @@ class DetailViewModel @Inject constructor(
 
                     val downloadUrl = source?.url
                     if (!downloadUrl.isNullOrEmpty()) {
+                        val estimatedBytes = source.sizeBytes?.takeIf { it > 0L }
+                        val availableBytes = DownloadStorage.availableBytes(context)
+                        if (estimatedBytes != null && availableBytes != null && estimatedBytes > availableBytes) {
+                            Toast.makeText(
+                                context,
+                                "Not enough free space. This download needs about ${formatDownloadBytes(estimatedBytes)}; ${formatDownloadBytes(availableBytes)} is available.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@onSuccess
+                        }
+                        if (estimatedBytes != null && availableBytes == null) {
+                            Toast.makeText(context, "Free space could not be checked; the download may need more storage than expected.", Toast.LENGTH_LONG).show()
+                        }
                         try {
-                            val hiddenFolder = File(context.getExternalFilesDir(null), ".downloads").apply {
+                            val hiddenFolder = DownloadStorage.directory(context).apply {
                                 if (!exists()) mkdirs()
                             }
                             File(hiddenFolder, ".nomedia").createNewFile()
@@ -327,7 +344,10 @@ class DetailViewModel @Inject constructor(
         context.startActivity(Intent.createChooser(shareIntent, "Share $titleName"))
     }
 
-    fun toggleBookmark(detailPath: String, title: String, coverUrl: String) {
+    private fun formatDownloadBytes(bytes: Long): String =
+        String.format(java.util.Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0))
+
+    fun toggleBookmark(detailPath: String, title: String, coverUrl: String, subjectType: String) {
         viewModelScope.launch {
             val currentState = _uiState.value
             if (currentState is DetailUiState.Success) {
@@ -335,7 +355,7 @@ class DetailViewModel @Inject constructor(
                     detailPath = detailPath,
                     title = title,
                     coverUrl = coverUrl,
-                    subjectType = "movie"
+                    subjectType = subjectType
                 )
                 localDatabaseRepository.toggleBookmark(item, currentState.data.isBookmarked)
                 val updatedData = currentState.data.copy(isBookmarked = !currentState.data.isBookmarked)

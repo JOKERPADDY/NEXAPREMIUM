@@ -2,7 +2,7 @@ package com.nexapremium.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,7 @@ import com.nexapremium.core.ui.theme.PrimaryRed
 import com.nexapremium.core.ui.theme.PureBlack
 import com.nexapremium.core.ui.theme.PureWhite
 import com.nexapremium.data.api.model.SubjectItemDto
+import com.nexapremium.ui.components.tvFocusOutline
 import com.nexapremium.ui.viewmodel.SearchUiState
 import com.nexapremium.ui.viewmodel.SearchViewModel
 
@@ -62,7 +64,7 @@ import com.nexapremium.ui.viewmodel.SearchViewModel
 fun SearchScreen(
     initialQuery: String = "",
     onBackClick: () -> Unit,
-    onItemClick: (String) -> Unit,
+    onItemClick: (String, String) -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -148,7 +150,12 @@ fun SearchScreen(
                     fontWeight = FontWeight.Medium
                 )
                 if (searchQuery.isNotBlank() && uiState is SearchUiState.Success) {
-                    Text("${(uiState as SearchUiState.Success).results.size} titles", color = MutedGray, fontSize = 12.sp)
+                                val results = uiState as SearchUiState.Success
+                                Text(
+                                    text = if (results.fromCache) "Saved matches · offline" else "${results.results.size} titles",
+                                    color = MutedGray,
+                                    fontSize = 12.sp
+                                )
                 }
             }
             IconButton(onClick = { viewModel.submitSearch() }) {
@@ -165,7 +172,10 @@ fun SearchScreen(
             is SearchUiState.Success -> {
                 if (state.results.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No titles found", color = MutedGray)
+                        Text(
+                            text = if (searchQuery.isBlank()) "No popular titles available" else "No titles found",
+                            color = MutedGray
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -175,7 +185,7 @@ fun SearchScreen(
                     ) {
                         items(state.results, key = { it.detailPath ?: it.id ?: it.title.orEmpty() }) { item ->
                             SearchResultRow(item = item, onClick = {
-                                item.detailPath?.let(onItemClick)
+                                item.detailPath?.let { path -> onItemClick(path, item.effectiveSubjectType) }
                             })
                         }
                     }
@@ -197,6 +207,7 @@ fun SearchScreen(
 
 @Composable
 private fun SearchResultRow(item: SubjectItemDto, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
     val genres = item.genres.orEmpty().ifEmpty {
         item.tags.orEmpty().mapNotNull { it.name }
     }.take(5).joinToString("/")
@@ -205,8 +216,13 @@ private fun SearchResultRow(item: SubjectItemDto, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = !item.detailPath.isNullOrBlank(), onClick = onClick)
-            .focusable()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = !item.detailPath.isNullOrBlank(),
+                onClick = onClick
+            )
+            .tvFocusOutline(interactionSource, RoundedCornerShape(12.dp))
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

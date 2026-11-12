@@ -24,6 +24,10 @@ data class DownloadItemState(
     val isDownloading: Boolean = false,
     val isPaused: Boolean = false,
     val isCompleted: Boolean = true,
+    val isFailed: Boolean = false,
+    val canRetry: Boolean = false,
+    val isQueued: Boolean = false,
+    val isWaitingForWifi: Boolean = false,
     val statusText: String = "Completed"
 )
 
@@ -41,8 +45,37 @@ class DownloadsViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun togglePauseDownload(downloadState: DownloadItemState) {
-        if (downloadState.isPaused) appDownloadManager.resume(downloadState.entity)
+        if (downloadState.isPaused) resumeAtEndOfQueue(downloadState.entity)
         else appDownloadManager.pause(downloadState.entity.id)
+    }
+
+    fun retryDownload(downloadState: DownloadItemState) {
+        if (downloadState.isFailed && downloadState.canRetry) {
+            resumeAtEndOfQueue(downloadState.entity)
+        }
+    }
+
+    private fun resumeAtEndOfQueue(entity: DownloadEntity) {
+        viewModelScope.launch {
+            localDatabaseRepository.updateDownloadTimestamp(entity.id, System.currentTimeMillis())
+            appDownloadManager.resume(entity)
+        }
+    }
+
+    fun moveQueuedDownload(id: String, direction: Int) {
+        val queue = downloadStates.value.filter { it.isQueued }.sortedByDescending { it.entity.timestamp }.toMutableList()
+        val index = queue.indexOfFirst { it.entity.id == id }
+        val target = index + direction
+        if (index < 0 || target !in queue.indices) return
+        val item = queue.removeAt(index)
+        queue.add(target, item)
+        appDownloadManager.reorderQueuedDownloads(queue.map { it.entity.id })
+        val firstTimestamp = System.currentTimeMillis()
+        viewModelScope.launch {
+            queue.forEachIndexed { order, state ->
+                localDatabaseRepository.updateDownloadTimestamp(state.entity.id, firstTimestamp - order)
+            }
+        }
     }
 
     private fun getDownloadState(entity: DownloadEntity, transfer: TransferProgress?): DownloadItemState {
@@ -59,6 +92,19 @@ class DownloadsViewModel @Inject constructor(
             val canResume = appDownloadManager.hasResumeData(entity)
             val bytes = maxOf(partBytes, 0L)
             val progress = if (expectedBytes > 0L) (bytes * 100 / expectedBytes).toInt().coerceIn(0, 99) else 0
+            val failure = appDownloadManager.failureReason(entity)
+            if (failure != null) {
+                return DownloadItemState(
+                    entity = entity,
+                    progress = progress,
+                    bytesDownloaded = bytes,
+                    totalBytes = expectedBytes,
+                    isCompleted = false,
+                    isFailed = true,
+                    canRetry = canResume,
+                    statusText = "Failed: $failure"
+                )
+            }
             return DownloadItemState(
                 entity = entity,
                 progress = progress,
@@ -66,7 +112,9 @@ class DownloadsViewModel @Inject constructor(
                 totalBytes = expectedBytes,
                 isPaused = canResume,
                 isCompleted = false,
-                statusText = if (canResume) "Paused" else "Download unavailable"
+                isFailed = !canResume,
+                canRetry = canResume,
+                statusText = if (canResume) "Paused" else "Request unavailable · open title to download again"
             )
         }
 
@@ -74,14 +122,26 @@ class DownloadsViewModel @Inject constructor(
         val bytes = if (transfer.bytesDownloaded > 0L) transfer.bytesDownloaded else partBytes
         val percent = if (total > 0L) (bytes * 100 / total).toInt().coerceIn(0, 100) else 0
         return when (transfer.status) {
-            TransferStatus.QUEUED -> DownloadItemState(entity, percent, bytes, total, isDownloading = true, isCompleted = false, statusText = "Queued...")
+            TransferStatus.QUEUED -> DownloadItemState(entity, percent, bytes, total, isCompleted = false, isQueued = true, statusText = "Queued")
+            TransferStatus.CONNECTING -> DownloadItemState(entity, percent, bytes, total, isDownloading = true, isCompleted = false, statusText = "Starting download…")
             TransferStatus.DOWNLOADING -> DownloadItemState(entity, percent, bytes, total, isDownloading = true, isCompleted = false, statusText = "Downloading ($percent%)...")
+            TransferStatus.WAITING_FOR_WIFI -> DownloadItemState(entity, percent, bytes, total, isCompleted = false, isQueued = true, isWaitingForWifi = true, statusText = "Waiting for Wi-Fi")
             TransferStatus.PAUSED -> DownloadItemState(entity, percent, bytes, total, isPaused = true, isCompleted = false, statusText = "Paused")
             TransferStatus.COMPLETED -> {
                 val actual = finalFile.takeIf(File::exists)?.length() ?: bytes
                 DownloadItemState(entity, 100, actual, actual, isCompleted = true, statusText = "Completed")
             }
-            TransferStatus.FAILED -> DownloadItemState(entity, percent, bytes, total, isPaused = true, isCompleted = false, statusText = transfer.error?.let { "Failed: $it" } ?: "Download failed")
+            TransferStatus.FAILED -> DownloadItemState(
+                entity = entity,
+                progress = percent,
+                bytesDownloaded = bytes,
+                totalBytes = total,
+                isPaused = true,
+                isCompleted = false,
+                isFailed = true,
+                canRetry = appDownloadManager.hasResumeData(entity),
+                statusText = transfer.error?.let { "Failed: $it" } ?: "Download failed"
+            )
         }
     }
 
@@ -89,6 +149,15 @@ class DownloadsViewModel @Inject constructor(
         appDownloadManager.cancel(downloadState.entity)
         viewModelScope.launch {
             localDatabaseRepository.deleteDownload(downloadState.entity.id)
+        }
+    }
+
+    fun clearCompletedDownloads(downloadStates: List<DownloadItemState>) {
+        viewModelScope.launch {
+            downloadStates.filter { it.isCompleted }.forEach { state ->
+                appDownloadManager.cancel(state.entity)
+                localDatabaseRepository.deleteDownload(state.entity.id)
+            }
         }
     }
 }

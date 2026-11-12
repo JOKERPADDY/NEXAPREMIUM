@@ -1,6 +1,5 @@
 package com.nexapremium.ui.components
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +32,8 @@ fun FocusableButton(
 
     Button(
         onClick = onClick,
-        modifier = modifier.focusable(interactionSource = interactionSource),
+        modifier = modifier.tvFocusOutline(interactionSource, RoundedCornerShape(6.dp)),
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(6.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,

@@ -18,6 +18,9 @@ interface DownloadDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDownload(download: DownloadEntity)
 
+    @Query("UPDATE downloads SET timestamp = :timestamp WHERE id = :id")
+    suspend fun updateTimestamp(id: String, timestamp: Long)
+
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun deleteDownload(id: String)
 }

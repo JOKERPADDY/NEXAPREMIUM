@@ -55,15 +55,18 @@ object FamilyContentFilter {
         val normalizedTitle = normalize(item.title.orEmpty())
         if (normalizedTitle in blockedTitles) return false
 
+        // Descriptions often mention mature themes in otherwise general titles. Use
+        // the title and provider taxonomy for the heuristic, not plot summaries.
         val text = listOfNotNull(
             item.title,
-            item.description,
             item.genres?.joinToString(" "),
             item.tags?.mapNotNull { it.name }?.joinToString(" ")
         ).joinToString(" ").lowercase()
         val normalizedWords = text.split(Regex("\\s+")).map(::normalize).filter { it.isNotEmpty() }
         val normalizedText = normalizedWords.joinToString(" ")
-        val hasMatureGenre = item.genres.orEmpty().any { normalize(it) in setOf("hot", "adult") }
+        val matureLabels = setOf("hot", "adult", "mature", "erotic", "ecchi", "hentai", "nsfw")
+        val hasMatureGenre = (item.genres.orEmpty() + item.tags.orEmpty().mapNotNull { it.name })
+            .any { normalize(it) in matureLabels }
 
         return !hasMatureGenre &&
             blockedWords.none { it in normalizedWords } &&

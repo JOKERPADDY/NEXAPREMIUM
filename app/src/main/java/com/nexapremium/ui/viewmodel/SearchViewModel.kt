@@ -16,7 +16,7 @@ import javax.inject.Inject
 sealed interface SearchUiState {
     object Idle : SearchUiState
     object Loading : SearchUiState
-    data class Success(val results: List<SubjectItemDto>) : SearchUiState
+    data class Success(val results: List<SubjectItemDto>, val fromCache: Boolean = false) : SearchUiState
     data class Error(val message: String) : SearchUiState
 }
 
@@ -38,7 +38,8 @@ class SearchViewModel @Inject constructor(
             .onEach { enabled ->
                 if (_uiState.value is SearchUiState.Success) {
                     _uiState.value = SearchUiState.Success(
-                        FamilyContentFilter.filter(unfilteredResults, enabled)
+                        FamilyContentFilter.filter(unfilteredResults, enabled),
+                        fromCache = (_uiState.value as? SearchUiState.Success)?.fromCache == true
                     )
                 }
             }
@@ -64,21 +65,12 @@ class SearchViewModel @Inject constructor(
             searchRepository.getPopularSearches()
                 .onSuccess { response ->
                     val items = response.data.orEmpty()
-                    if (items.isNotEmpty()) {
-                        publishResults(items)
-                    } else {
-                        val cachedAll = sectionItemsRepository.getAllCachedItems()
-                        if (cachedAll.isNotEmpty()) {
-                            publishResults(cachedAll)
-                        } else {
-                            _uiState.value = SearchUiState.Idle
-                        }
-                    }
+                    publishResults(items)
                 }
                 .onFailure {
                     val cachedAll = sectionItemsRepository.getAllCachedItems()
                     if (cachedAll.isNotEmpty()) {
-                        publishResults(cachedAll)
+                        publishResults(cachedAll, fromCache = true)
                     } else {
                         _uiState.value = SearchUiState.Idle
                     }
@@ -98,43 +90,37 @@ class SearchViewModel @Inject constructor(
     private fun executeSearch(query: String) {
         viewModelScope.launch {
             _uiState.value = SearchUiState.Loading
-            val cached = sectionItemsRepository.getSectionItems(query)
-            if (!cached.isNullOrEmpty()) {
-                publishResults(cached)
-            } else {
-                searchRepository.search(query)
-                    .onSuccess { response ->
-                        val items = response.items.orEmpty().ifEmpty {
-                            response.data?.items.orEmpty()
-                        }
-                        if (items.isNotEmpty()) {
-                            publishResults(items)
-                        } else {
-                            // Fallback to all cached section items or popular searches if specific query yielded nothing
-                            val cachedAll = sectionItemsRepository.getAllCachedItems()
-                            if (cachedAll.isNotEmpty()) {
-                                publishResults(cachedAll)
-                            } else {
-                                _uiState.value = SearchUiState.Success(emptyList())
-                            }
-                        }
+            searchRepository.search(query)
+                .onSuccess { response ->
+                    val items = response.items.orEmpty().ifEmpty {
+                        response.data?.items.orEmpty()
                     }
-                    .onFailure { error ->
-                        val cachedAll = sectionItemsRepository.getAllCachedItems()
-                        if (cachedAll.isNotEmpty()) {
-                            publishResults(cachedAll)
-                        } else {
-                            _uiState.value = SearchUiState.Error(error.message ?: "Search failed")
-                        }
+                    publishResults(items)
+                }
+                .onFailure { error ->
+                    val normalizedQuery = query.trim().lowercase()
+                    val cachedMatches = sectionItemsRepository.getAllCachedItems().filter { item ->
+                        listOfNotNull(
+                            item.title,
+                            item.description,
+                            item.genres?.joinToString(" "),
+                            item.tags?.mapNotNull { tag -> tag.name }?.joinToString(" ")
+                        ).any { it.contains(normalizedQuery, ignoreCase = true) }
                     }
-            }
+                    if (cachedMatches.isNotEmpty()) {
+                        publishResults(cachedMatches, fromCache = true)
+                    } else {
+                        _uiState.value = SearchUiState.Error(error.message ?: "Search failed")
+                    }
+                }
         }
     }
 
-    private fun publishResults(items: List<SubjectItemDto>) {
+    private fun publishResults(items: List<SubjectItemDto>, fromCache: Boolean = false) {
         unfilteredResults = items
         _uiState.value = SearchUiState.Success(
-            FamilyContentFilter.filter(items, familyModeRepository.enabled.value)
+            FamilyContentFilter.filter(items, familyModeRepository.enabled.value),
+            fromCache
         )
     }
 }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -13,10 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.nexapremium.core.ui.theme.PrimaryRed
 import com.nexapremium.core.ui.theme.PureBlack
 import com.nexapremium.core.ui.theme.PureWhite
 import com.nexapremium.ui.components.FocusableButton
+import com.nexapremium.ui.components.CatalogLoadingSkeleton
 import com.nexapremium.ui.components.HeroBanner
 import com.nexapremium.ui.components.HorizontalCarousel
 import com.nexapremium.ui.viewmodel.TabContentViewModel
@@ -26,7 +25,8 @@ import com.nexapremium.ui.viewmodel.TabUiState
 fun TabContentScreen(
     tabName: String,
     onItemClick: (String, String) -> Unit,
-    onSectionClick: (String) -> Unit
+    onSectionClick: (String) -> Unit,
+    onSportsClick: (String, String) -> Unit = { _, _ -> }
 ) {
     val viewModel: TabContentViewModel = hiltViewModel(
         key = tabName,
@@ -41,10 +41,7 @@ fun TabContentScreen(
     ) {
         when (val state = uiState) {
             is TabUiState.Loading -> {
-                CircularProgressIndicator(
-                    color = PrimaryRed,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                CatalogLoadingSkeleton()
             }
             is TabUiState.Success -> {
                 if (state.banners.isEmpty() && state.blocks.isEmpty()) {
@@ -66,6 +63,12 @@ fun TabContentScreen(
                                 onItemClick = onItemClick,
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
+                        }
+                    }
+
+                    if (tabName.equals("recommended", ignoreCase = true)) {
+                        item(key = "live_sports") {
+                            com.nexapremium.ui.components.LiveSportsRow(onMatchClick = { match -> onSportsClick(match.id, match.title) })
                         }
                     }
 

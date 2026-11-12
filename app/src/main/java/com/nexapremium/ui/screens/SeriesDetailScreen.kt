@@ -3,6 +3,7 @@ package com.nexapremium.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,21 +31,31 @@ import coil.compose.AsyncImage
 import com.nexapremium.core.ui.theme.*
 import com.nexapremium.data.api.model.MediaSourceDto
 import com.nexapremium.ui.components.DownloadBottomSheet
+import com.nexapremium.ui.components.rememberDownloadPermissionRequester
 import com.nexapremium.ui.components.FocusableButton
 import com.nexapremium.ui.components.FocusableCard
+import com.nexapremium.ui.components.tvFocusOutline
+import com.nexapremium.ui.components.isTelevisionDevice
 import com.nexapremium.ui.viewmodel.DetailUiState
 import com.nexapremium.ui.viewmodel.DetailViewModel
 
 @Composable
-fun SeriesBadgeItem(text: String) {
+fun SeriesBadgeItem(
+    text: String,
+    textColor: Color = MutedGray,
+    containerColor: Color = DarkSurface,
+    border: androidx.compose.foundation.BorderStroke? = null
+) {
     Surface(
-        color = DarkSurface,
-        shape = RoundedCornerShape(4.dp)
+        color = containerColor,
+        shape = RoundedCornerShape(4.dp),
+        border = border
     ) {
         Text(
             text = text,
-            color = MutedGray,
+            color = textColor,
             fontSize = 12.sp,
+            fontWeight = if (textColor != MutedGray) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
@@ -86,6 +98,7 @@ fun EpisodePill(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val bgColor = if (isSelected) PrimaryRed else DarkSurface
     val textColor = PureWhite
 
@@ -94,7 +107,8 @@ fun EpisodePill(
             .size(54.dp, 44.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
-            .clickable { onClick() },
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .tvFocusOutline(interactionSource, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -109,11 +123,14 @@ fun EpisodePill(
 @Composable
 fun SeriesDetailScreen(
     detailPath: String,
-    onPlayClick: (String, Int, Int) -> Unit,
+    onPlayClick: (String, Int, Int, String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val requestPermissionThenDownload = rememberDownloadPermissionRequester()
+    val isTelevision = remember(context) { isTelevisionDevice(context) }
     val uiState by viewModel.uiState.collectAsState()
+    val preferredDownloadQuality by viewModel.defaultDownloadQuality.collectAsState()
 
     LaunchedEffect(detailPath) {
         viewModel.loadDetail(detailPath)
@@ -191,7 +208,7 @@ fun SeriesDetailScreen(
                         )
                         // Play Button Overlay
                         IconButton(
-                            onClick = { onPlayClick(detailPath, data.selectedSeason, 1) },
+                            onClick = { onPlayClick(detailPath, data.selectedSeason, 1, movie.cover?.url.orEmpty()) },
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .size(64.dp)
@@ -222,7 +239,12 @@ fun SeriesDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             SeriesBadgeItem("TV Series")
-                            SeriesBadgeItem("★ ${String.format("%.1f", movie.score ?: 0.0)}")
+                            SeriesBadgeItem(
+                                text = "★ ${String.format("%.1f", movie.score ?: 0.0)}",
+                                textColor = Color(0xFFFFC107),
+                                containerColor = Color(0xFF2A230B),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFC107).copy(alpha = 0.6f))
+                            )
                             movie.releaseYear?.let { yr -> SeriesBadgeItem("$yr") }
                             SeriesBadgeItem("${data.seasons.size.coerceAtLeast(1)} Seasons")
                         }
@@ -240,7 +262,8 @@ fun SeriesDetailScreen(
                                     viewModel.toggleBookmark(
                                         detailPath = detailPath,
                                         title = movie.title ?: "",
-                                        coverUrl = movie.cover?.url ?: ""
+                                        coverUrl = movie.cover?.url ?: "",
+                                        subjectType = "series"
                                     )
                                 },
                                 isPrimary = false,
@@ -252,12 +275,14 @@ fun SeriesDetailScreen(
                                 isPrimary = false,
                                 modifier = Modifier.weight(1f)
                             )
-                            FocusableButton(
-                                text = "Download",
-                                onClick = { showDownloadBottomSheet = true },
-                                isPrimary = true,
-                                modifier = Modifier.weight(1f)
-                            )
+                            if (!isTelevision) {
+                                FocusableButton(
+                                    text = "Download",
+                                    onClick = { showDownloadBottomSheet = true },
+                                    isPrimary = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -351,7 +376,7 @@ fun SeriesDetailScreen(
                                     isSelected = selectedPillIndex == null,
                                     onClick = {
                                         selectedPillIndex = null
-                                        onPlayClick(detailPath, data.selectedSeason, 1)
+                                        onPlayClick(detailPath, data.selectedSeason, 1, movie.cover?.url.orEmpty())
                                     }
                                 )
                             }
@@ -364,7 +389,7 @@ fun SeriesDetailScreen(
                                     isSelected = selectedPillIndex == index,
                                     onClick = {
                                         selectedPillIndex = index
-                                        onPlayClick(detailPath, data.selectedSeason, epNum)
+                                        onPlayClick(detailPath, data.selectedSeason, epNum, movie.cover?.url.orEmpty())
                                     }
                                 )
                             }
@@ -391,7 +416,7 @@ fun SeriesDetailScreen(
                                         badgeText = item.badgeText,
                                         onClick = {
                                             item.detailPath?.let { path ->
-                                                onPlayClick(path, 1, 1)
+                                                onPlayClick(path, 1, 1, item.effectiveCoverUrl.orEmpty())
                                             }
                                         },
                                         modifier = Modifier.width(115.dp)
@@ -402,25 +427,28 @@ fun SeriesDetailScreen(
                     }
                 }
 
-                if (showDownloadBottomSheet) {
+                if (showDownloadBottomSheet && !isTelevision) {
                     DownloadBottomSheet(
                         titleName = movie.title ?: "Series",
                         seasonNumber = data.selectedSeason,
                         episodes = data.episodes,
                         availableQualities = availableQualities,
+                        preferredQuality = preferredDownloadQuality,
                         episodePlaybackSources = episodePlaybackSources,
                         episodeSourcesLoading = episodeSourcesLoading,
                         onDismiss = { showDownloadBottomSheet = false },
                         onDownloadEpisodes = { selectedEps, resolution, _ ->
-                            selectedEps.forEach { epNum ->
-                                viewModel.downloadTitle(
-                                    context = context,
-                                    detailPath = detailPath,
-                                    titleName = "${movie.title}_S${data.selectedSeason}E$epNum",
-                                    season = data.selectedSeason,
-                                    episode = epNum,
-                                    quality = resolution
-                                )
+                            requestPermissionThenDownload {
+                                selectedEps.forEach { epNum ->
+                                    viewModel.downloadTitle(
+                                        context = context,
+                                        detailPath = detailPath,
+                                        titleName = movie.title ?: "Series",
+                                        season = data.selectedSeason,
+                                        episode = epNum,
+                                        quality = resolution
+                                    )
+                                }
                             }
                         }
                     )

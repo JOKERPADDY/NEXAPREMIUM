@@ -67,8 +67,12 @@ val bottomNavItems = listOf(
 fun BottomNavigationBar(
     currentRoute: String?,
     onItemSelected: (String) -> Unit,
+    showDownloads: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val visibleItems = if (showDownloads) bottomNavItems else bottomNavItems.filterNot {
+        it.route == Screen.Downloads.route
+    }
     NavigationBar(
         modifier = modifier
             .fillMaxWidth()
@@ -76,7 +80,7 @@ fun BottomNavigationBar(
         containerColor = DarkSurface,
         tonalElevation = 8.dp
     ) {
-        bottomNavItems.forEach { item ->
+        visibleItems.forEach { item ->
             val isSelected = currentRoute == item.route ||
                     (item.route == Screen.Recommended.route &&
                             (currentRoute == Screen.Movies.route ||

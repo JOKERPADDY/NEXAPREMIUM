@@ -1,7 +1,9 @@
 package com.nexapremium.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -9,6 +11,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,7 +39,12 @@ fun HorizontalCarousel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = onSectionClick != null) { onSectionClick?.invoke(title) }
+                .then(if (onSectionClick != null) {
+                    val sectionInteraction = remember(title) { MutableInteractionSource() }
+                    Modifier
+                        .clickable(interactionSource = sectionInteraction, indication = null) { onSectionClick(title) }
+                        .tvFocusOutline(sectionInteraction, RoundedCornerShape(4.dp))
+                } else Modifier)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

@@ -2,15 +2,25 @@ package com.nexapremium.ui.screens
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.content.pm.PackageManager
+import android.os.Build
+import android.app.PictureInPictureParams
+import android.util.Rational
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -24,6 +34,7 @@ import com.nexapremium.core.ui.theme.PureBlack
 import com.nexapremium.core.ui.theme.PureWhite
 import com.nexapremium.player.NexaPlayerEngine
 import com.nexapremium.player.NexaPlayerView
+import com.nexapremium.ui.components.FocusableButton
 import com.nexapremium.ui.viewmodel.PlayerUiState
 import com.nexapremium.ui.viewmodel.PlayerViewModel
 
@@ -39,11 +50,13 @@ fun VideoPlayerScreen(
     season: Int = 0,
     episode: Int = 0,
     offlineOnly: Boolean = false,
+    coverUrl: String = "",
     onBackClick: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val defaultPlaybackSpeed by viewModel.defaultPlaybackSpeed.collectAsState()
 
     val playerEngine = remember {
         EntryPointAccessors.fromApplication(
@@ -52,11 +65,26 @@ fun VideoPlayerScreen(
         ).playerEngine()
     }
     val player = remember { playerEngine.getOrCreatePlayer(context) }
+    val pictureInPictureClick: (() -> Unit)? = remember(context) {
+        val activity = context as? Activity
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            activity?.packageManager?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) == true
+        ) {
+            {
+                activity.enterPictureInPictureMode(
+                    PictureInPictureParams.Builder()
+                        .setAspectRatio(Rational(16, 9))
+                        .build()
+                )
+            }
+        } else null
+    }
 
     // Lock Orientation to Landscape & Hide System Bars for Immersive Landscape Playback
     DisposableEffect(Unit) {
         val activity = context as? Activity
         val originalOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        val enteredInPortrait = activity?.resources?.configuration?.orientation == Configuration.ORIENTATION_PORTRAIT
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
         val window = activity?.window
@@ -65,14 +93,18 @@ fun VideoPlayerScreen(
         insetsController?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         onDispose {
-            activity?.requestedOrientation = originalOrientation
+            activity?.requestedOrientation = when {
+                originalOrientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED -> originalOrientation
+                enteredInPortrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                else -> originalOrientation
+            }
             insetsController?.show(WindowInsetsCompat.Type.systemBars())
             val stateVal = viewModel.uiState.value
             if (stateVal is PlayerUiState.Success) {
-                    viewModel.saveProgress(
+                viewModel.saveProgress(
                     detailPath = detailPath,
                     title = stateVal.playbackData.title ?: "",
-                    coverUrl = "",
+                    coverUrl = coverUrl,
                     positionMs = player.currentPosition,
                     durationMs = player.duration.coerceAtLeast(1L),
                     season = season,
@@ -125,13 +157,17 @@ fun VideoPlayerScreen(
                         viewModel.saveProgress(
                             detailPath = detailPath,
                             title = title,
-                            coverUrl = "",
+                            coverUrl = coverUrl,
                             positionMs = pos,
                             durationMs = dur,
                             season = season,
                             episode = episode
                         )
-                    }
+                    },
+                    initialPlaybackSpeed = defaultPlaybackSpeed,
+                    onPlaybackSpeedChanged = viewModel::setDefaultPlaybackSpeed,
+                    onPlaybackEnded = { viewModel.onPlaybackEnded(detailPath, season, episode) },
+                    onPictureInPictureClick = pictureInPictureClick
                 )
             }
             is PlayerUiState.Offline -> {
@@ -144,15 +180,27 @@ fun VideoPlayerScreen(
                 NexaPlayerView(
                     player = player,
                     title = download.title,
-                    onBackClick = onBackClick
+                    onBackClick = onBackClick,
+                    initialPlaybackSpeed = defaultPlaybackSpeed,
+                    onPlaybackSpeedChanged = viewModel::setDefaultPlaybackSpeed,
+                    onPlaybackEnded = { viewModel.onPlaybackEnded(detailPath, season, episode) },
+                    onPictureInPictureClick = pictureInPictureClick
                 )
             }
             is PlayerUiState.Error -> {
-                Text(
-                    text = state.message,
-                    color = PureWhite,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = state.message, color = PureWhite)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    FocusableButton(
+                        text = "Retry",
+                        onClick = { viewModel.loadPlayback(detailPath, season, episode, offlineOnly) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FocusableButton(text = "Back", onClick = onBackClick, isPrimary = false)
+                }
             }
         }
     }

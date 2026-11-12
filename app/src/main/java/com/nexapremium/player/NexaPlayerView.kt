@@ -4,14 +4,14 @@ import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
 import android.net.Uri
+import android.os.SystemClock
+import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -26,6 +26,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -40,9 +47,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.nexapremium.core.ui.theme.*
+import com.nexapremium.R
 import com.nexapremium.data.api.model.CaptionItemDto
 import com.nexapremium.data.api.model.MediaSourceDto
 import kotlinx.coroutines.delay
+import com.nexapremium.ui.components.TvIconButton
+import com.nexapremium.ui.components.tvFocusOutline
 
 @Composable
 fun ThinSeekBar(
@@ -125,9 +135,22 @@ fun NexaPlayerView(
     onBackClick: () -> Unit,
     onQualitySelected: ((MediaSourceDto) -> Unit)? = null,
     onNextEpisodeClick: (() -> Unit)? = null,
+    onSkipIntroClick: (() -> Unit)? = null,
+    introDurationMs: Long = 85_000L,
     onProgressChanged: ((Long, Long) -> Unit)? = null,
+    initialPlaybackSpeed: Float = 1.0f,
+    onPlaybackSpeedChanged: ((Float) -> Unit)? = null,
+    onPlaybackEnded: (() -> Unit)? = null,
+    onPictureInPictureClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    activeSubtitleText: String? = null
+    activeSubtitleText: String? = null,
+    serverOptions: List<String> = emptyList(),
+    selectedServerIndex: Int = -1,
+    onServerSelected: ((Int) -> Unit)? = null,
+    isServerResolving: Boolean = false,
+    serverError: String? = null,
+    onPlaybackError: (() -> Unit)? = null,
+    onRetryPlayback: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -147,14 +170,53 @@ fun NexaPlayerView(
     var isLocked by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableLongStateOf(player.currentPosition) }
     var duration by remember { mutableLongStateOf(player.duration.coerceAtLeast(1L)) }
-    var currentSpeed by remember { mutableFloatStateOf(1.0f) }
+    var currentSpeed by remember(player) { mutableFloatStateOf(initialPlaybackSpeed) }
     var showSpeedMenu by remember { mutableStateOf(false) }
+    var showSleepTimerMenu by remember { mutableStateOf(false) }
+    var sleepTimerDeadline by remember { mutableLongStateOf(0L) }
+    var sleepTimerRemainingSeconds by remember { mutableLongStateOf(0L) }
     var showLanguageMenu by remember { mutableStateOf(false) }
     var showQualityMenu by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
     var showCastDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showServerMenu by remember { mutableStateOf(false) }
+    var showSkipIntro by remember { mutableStateOf(true) }
     var selectedCaption by remember { mutableStateOf<CaptionItemDto?>(null) }
+    val playerFocusRequester = remember { FocusRequester() }
+    val playFocusRequester = remember { FocusRequester() }
+
+    val handleSkipIntro = {
+        if (onSkipIntroClick != null) {
+            onSkipIntroClick()
+        } else {
+            val targetPos = (player.currentPosition + introDurationMs).coerceAtMost(duration)
+            player.seekTo(targetPos)
+        }
+        showSkipIntro = false
+        showControls = false
+        gestureValue = "Skipped Intro (+${introDurationMs / 1000}s)"
+    }
+
+    LaunchedEffect(playerFocusRequester) {
+        playerFocusRequester.requestFocus()
+    }
+    LaunchedEffect(showControls, sources.isNotEmpty()) {
+        if (showControls && sources.isNotEmpty()) playFocusRequester.requestFocus()
+        else playerFocusRequester.requestFocus()
+    }
+
+    DisposableEffect(activity) {
+        val window = activity?.window
+        val originalScreenBrightness = window?.attributes?.screenBrightness
+        onDispose {
+            if (window != null && originalScreenBrightness != null) {
+                window.attributes = window.attributes.apply {
+                    screenBrightness = originalScreenBrightness
+                }
+            }
+        }
+    }
 
     val availableQualities = remember(sources) {
         sources.map { it.effectiveQuality }.distinct().ifEmpty { listOf("720P", "1080P", "360P") }
@@ -171,10 +233,20 @@ fun NexaPlayerView(
         } else "bcdnxw.hakunaymatata.com"
     }
 
-    LaunchedEffect(player) {
+    val onPlaybackEndedState by rememberUpdatedState(onPlaybackEnded)
+    val onPlaybackErrorState by rememberUpdatedState(onPlaybackError)
+    val onRetryPlaybackState by rememberUpdatedState(onRetryPlayback)
+
+    LaunchedEffect(player, initialPlaybackSpeed) {
+        currentSpeed = initialPlaybackSpeed
+        player.playbackParameters = PlaybackParameters(initialPlaybackSpeed)
+    }
+
+    DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                if (playing) playerError = null
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -182,19 +254,41 @@ fun NexaPlayerView(
                 if (playbackState == Player.STATE_READY) {
                     playerError = null
                 }
+                if (playbackState == Player.STATE_ENDED) onPlaybackEndedState?.invoke()
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                if (player.isPlaying) {
+                    playerError = null
+                    return
+                }
                 playerError = error
                 isBuffering = false
+                onPlaybackErrorState?.invoke()
             }
         }
         player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
+
+    LaunchedEffect(sleepTimerDeadline) {
+        while (sleepTimerDeadline > 0L) {
+            val remaining = ((sleepTimerDeadline - SystemClock.elapsedRealtime()) / 1000L).coerceAtLeast(0L)
+            sleepTimerRemainingSeconds = remaining
+            if (remaining == 0L) {
+                player.pause()
+                showControls = true
+                gestureValue = "Sleep timer ended"
+                sleepTimerDeadline = 0L
+                break
+            }
+            delay(1000L)
+        }
     }
 
     LaunchedEffect(showControls, isPlaying) {
         if (showControls && isPlaying && !isLocked) {
-            delay(4000)
+            delay(3000)
             showControls = false
         }
     }
@@ -223,8 +317,52 @@ fun NexaPlayerView(
         modifier = modifier
             .fillMaxSize()
             .background(PureBlack)
-            .pointerInput(isLocked) {
-                if (!isLocked) detectVerticalDragGestures { change, dragAmount ->
+            .focusRequester(playerFocusRequester)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.Back,
+                    Key.Escape -> {
+                        onBackClick()
+                        true
+                    }
+                    Key.MediaPlayPause -> {
+                        if (player.isPlaying) player.pause() else player.play()
+                        true
+                    }
+                    Key.DirectionCenter,
+                    Key.Enter,
+                    Key.NumPadEnter -> {
+                        if (!showControls) {
+                            showControls = true
+                            true
+                        } else false
+                    }
+                    Key.DirectionLeft -> {
+                        if (!showControls) {
+                            player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
+                            true
+                        } else false
+                    }
+                    Key.DirectionRight -> {
+                        if (!showControls) {
+                            player.seekTo((player.currentPosition + 10_000L).coerceAtMost(duration))
+                            true
+                        } else false
+                    }
+                    Key.DirectionUp,
+                    Key.DirectionDown -> {
+                        if (!showControls) {
+                            showControls = true
+                            true
+                        } else false
+                    }
+                    else -> false
+                }
+            }
+            .pointerInput(isLocked, showControls) {
+                if (!isLocked && !showControls) detectVerticalDragGestures { change, dragAmount ->
                     change.consume()
                     val adjustment = -dragAmount / size.height.toFloat()
                     if (change.position.x < size.width / 2f) {
@@ -241,15 +379,15 @@ fun NexaPlayerView(
                     }
                 }
             }
-            .clickable {
-                if (!isLocked) {
-                    showControls = !showControls
+            .pointerInput(isLocked) {
+                detectTapGestures {
+                    if (!isLocked) showControls = !showControls
                 }
             }
     ) {
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
+                (LayoutInflater.from(ctx).inflate(R.layout.player_view_texture, null, false) as PlayerView).apply {
                     this.player = player
                     useController = false
                     this.resizeMode = resizeMode
@@ -283,8 +421,44 @@ fun NexaPlayerView(
             )
         }
 
+        if (isServerResolving) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(DarkSurface.copy(alpha = 0.94f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CircularProgressIndicator(color = PrimaryRed)
+                Text("Please wait... Live sports is starting.", color = PureWhite, fontSize = 13.sp)
+            }
+        }
+
+        if (sources.isEmpty() && !isServerResolving && !serverError.isNullOrBlank()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(DarkSurface.copy(alpha = 0.94f), RoundedCornerShape(8.dp))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Unable to start live stream", color = PrimaryRed, fontSize = 16.sp)
+                Text(serverError, color = PureWhite, fontSize = 13.sp)
+                if (onRetryPlayback != null) {
+                    Button(
+                        onClick = onRetryPlayback,
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryRed)
+                    ) {
+                        Text("Retry", color = PureWhite)
+                    }
+                }
+            }
+        }
+
         // Playback Error Overlay
-        if (playerError != null) {
+        if (playerError != null && !isServerResolving) {
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -300,7 +474,11 @@ fun NexaPlayerView(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = playerError?.message ?: "Unable to play stream",
+                    text = if (serverOptions.isNotEmpty()) {
+                        "This stream stopped. Retry or choose another server in Settings."
+                    } else {
+                        playerError?.message ?: "Unable to play stream"
+                    },
                     color = PureWhite,
                     fontSize = 12.sp
                 )
@@ -308,12 +486,16 @@ fun NexaPlayerView(
                 Button(
                     onClick = {
                         playerError = null
-                        val currentSrc = sources.firstOrNull { it.effectiveQuality == currentQuality } ?: sources.firstOrNull()
-                        if (currentSrc != null) {
-                            onQualitySelected?.invoke(currentSrc)
+                        if (onRetryPlaybackState != null) {
+                            onRetryPlaybackState?.invoke()
                         } else {
-                            player.prepare()
-                            player.playWhenReady = true
+                            val currentSrc = sources.firstOrNull { it.effectiveQuality == currentQuality } ?: sources.firstOrNull()
+                            if (currentSrc != null) {
+                                onQualitySelected?.invoke(currentSrc)
+                            } else {
+                                player.prepare()
+                                player.playWhenReady = true
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryRed)
@@ -342,6 +524,53 @@ fun NexaPlayerView(
             }
         }
 
+        // Floating "Skip Intro" Button (visible during intro range and showSkipIntro, disappearing after 3s)
+        val isIntroRange = currentPosition in 0L..150_000L
+
+        LaunchedEffect(isIntroRange, isPlaying) {
+            if (isIntroRange && isPlaying) {
+                showSkipIntro = true
+                delay(3000L)
+                showSkipIntro = false
+            }
+        }
+
+        LaunchedEffect(showControls) {
+            if (showControls && isIntroRange) {
+                showSkipIntro = true
+                delay(3000L)
+                showSkipIntro = false
+            }
+        }
+
+        if (sources.isNotEmpty() && !isLocked && isIntroRange && showSkipIntro) {
+            val skipInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 100.dp, end = 24.dp)
+                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
+                    .clickable(interactionSource = skipInteraction, indication = null) { handleSkipIntro() }
+                    .tvFocusOutline(skipInteraction, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FastForward,
+                    contentDescription = "Skip Intro",
+                    tint = PureWhite,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "Skip Intro",
+                    color = PureWhite,
+                    fontSize = 13.sp,
+                    style = Typography.labelLarge
+                )
+            }
+        }
+
         // Lock Toggle Icon when Locked
         if (isLocked) {
             Box(
@@ -364,17 +593,10 @@ fun NexaPlayerView(
             }
         }
 
-        // Animated Player Controls Overlay
-        AnimatedVisibility(
-            visible = showControls && !isLocked,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
-        ) {
+        // Player controls overlay
+        if (showControls && !isLocked) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
+                modifier = Modifier.fillMaxSize()
             ) {
                 // 1. TOP BAR
                 Row(
@@ -386,14 +608,13 @@ fun NexaPlayerView(
                 ) {
                     // Left: Back button + Title
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = PureWhite,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        TvIconButton(
+                            image = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBackClick,
+                            buttonSize = 48.dp,
+                            iconSize = 24.dp
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = displayTitle,
@@ -408,23 +629,35 @@ fun NexaPlayerView(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val castInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { showCastDialog = true }
+                            modifier = Modifier
+                                .clickable(interactionSource = castInteraction, indication = null) { showCastDialog = true }
+                                .tvFocusOutline(castInteraction, RoundedCornerShape(6.dp))
+                                .padding(4.dp)
                         ) {
                             Icon(imageVector = Icons.Default.Tv, contentDescription = "Cast", tint = PureWhite, modifier = Modifier.size(20.dp))
                             Text("TV", color = PureWhite, fontSize = 10.sp)
                         }
+                        val helpInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { showHelpDialog = true }
+                            modifier = Modifier
+                                .clickable(interactionSource = helpInteraction, indication = null) { showHelpDialog = true }
+                                .tvFocusOutline(helpInteraction, RoundedCornerShape(6.dp))
+                                .padding(4.dp)
                         ) {
                             Icon(imageVector = Icons.Default.HelpOutline, contentDescription = "Help", tint = PureWhite, modifier = Modifier.size(20.dp))
                             Text("Help", color = PureWhite, fontSize = 10.sp)
                         }
+                        val settingsInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { showSettingsDialog = true }
+                            modifier = Modifier
+                                .clickable(interactionSource = settingsInteraction, indication = null) { showSettingsDialog = true }
+                                .tvFocusOutline(settingsInteraction, RoundedCornerShape(6.dp))
+                                .padding(4.dp)
                         ) {
                             Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings", tint = PureWhite, modifier = Modifier.size(20.dp))
                             Text("Setting", color = PureWhite, fontSize = 10.sp)
@@ -432,6 +665,7 @@ fun NexaPlayerView(
                     }
                 }
 
+                if (sources.isNotEmpty()) {
                 // 2. MIDDLE LEFT OVERLAY (Screen Lock)
                 Column(
                     modifier = Modifier
@@ -454,40 +688,28 @@ fun NexaPlayerView(
                     horizontalArrangement = Arrangement.spacedBy(48.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = { player.seekTo((player.currentPosition - 10000L).coerceAtLeast(0L)) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Replay10,
-                            contentDescription = "Rewind 10s",
-                            tint = PureWhite,
-                            modifier = Modifier.size(44.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {
-                            if (isPlaying) player.pause() else player.play()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Play/Pause",
-                            tint = PureWhite,
-                            modifier = Modifier.size(54.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { player.seekTo((player.currentPosition + 10000L).coerceAtMost(duration)) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Forward10,
-                            contentDescription = "Forward 10s",
-                            tint = PureWhite,
-                            modifier = Modifier.size(44.dp)
-                        )
-                    }
+                    TvIconButton(
+                        image = Icons.Default.Replay10,
+                        contentDescription = "Rewind 10 seconds",
+                        onClick = { player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L)) },
+                        buttonSize = 64.dp,
+                        iconSize = 44.dp
+                    )
+                    TvIconButton(
+                        image = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        onClick = { if (isPlaying) player.pause() else player.play() },
+                        buttonSize = 72.dp,
+                        iconSize = 54.dp,
+                        focusRequester = playFocusRequester
+                    )
+                    TvIconButton(
+                        image = Icons.Default.Forward10,
+                        contentDescription = "Forward 10 seconds",
+                        onClick = { player.seekTo((player.currentPosition + 10_000L).coerceAtMost(duration)) },
+                        buttonSize = 64.dp,
+                        iconSize = 44.dp
+                    )
                 }
 
                 // 4. BOTTOM CONTROLS & THIN SEEKBAR
@@ -525,17 +747,41 @@ fun NexaPlayerView(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            IconButton(onClick = { if (isPlaying) player.pause() else player.play() }, modifier = Modifier.size(32.dp)) {
-                                Icon(imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = "Play", tint = PureWhite)
+                            TvIconButton(
+                                image = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                onClick = { if (isPlaying) player.pause() else player.play() },
+                                buttonSize = 40.dp,
+                                iconSize = 22.dp
+                            )
+                            TvIconButton(
+                                image = Icons.Default.FastForward,
+                                contentDescription = "Skip Intro",
+                                onClick = { handleSkipIntro() },
+                                buttonSize = 40.dp,
+                                iconSize = 22.dp
+                            )
+                            if (onPictureInPictureClick != null) {
+                                TvIconButton(
+                                    image = Icons.Default.PictureInPictureAlt,
+                                    contentDescription = "Picture in picture",
+                                    onClick = onPictureInPictureClick,
+                                    buttonSize = 40.dp,
+                                    iconSize = 22.dp
+                                )
                             }
                             if (onNextEpisodeClick != null) {
-                                IconButton(onClick = onNextEpisodeClick, modifier = Modifier.size(32.dp)) {
-                                    Icon(imageVector = Icons.Default.SkipNext, contentDescription = "Next Episode", tint = PureWhite)
-                                }
+                                TvIconButton(
+                                    image = Icons.Default.SkipNext,
+                                    contentDescription = "Next episode",
+                                    onClick = onNextEpisodeClick,
+                                    buttonSize = 40.dp,
+                                    iconSize = 22.dp
+                                )
                             }
                         }
 
-                        // Right: Fit | Language | Speed | Quality
+                        // Right: Fit | Language | Speed | Timer | Quality
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -614,7 +860,51 @@ fun NexaPlayerView(
                                             onClick = {
                                                 currentSpeed = speed
                                                 player.playbackParameters = PlaybackParameters(speed)
+                                                onPlaybackSpeedChanged?.invoke(speed)
                                                 showSpeedMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Sleep timer
+                            Box {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { showSleepTimerMenu = true }
+                                ) {
+                                    Icon(imageVector = Icons.Default.Timer, contentDescription = null, tint = PureWhite, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (sleepTimerDeadline > 0L) {
+                                            "${sleepTimerRemainingSeconds / 60}:${(sleepTimerRemainingSeconds % 60).toString().padStart(2, '0')}"
+                                        } else "Timer",
+                                        color = PureWhite,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showSleepTimerMenu,
+                                    onDismissRequest = { showSleepTimerMenu = false },
+                                    modifier = Modifier.background(DarkSurface)
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Off", color = PureWhite) },
+                                        onClick = {
+                                            sleepTimerDeadline = 0L
+                                            sleepTimerRemainingSeconds = 0L
+                                            showSleepTimerMenu = false
+                                        }
+                                    )
+                                    listOf(15, 30, 45, 60).forEach { minutes ->
+                                        DropdownMenuItem(
+                                            text = { Text("$minutes minutes", color = PureWhite) },
+                                            onClick = {
+                                                sleepTimerDeadline = SystemClock.elapsedRealtime() + minutes * 60_000L
+                                                sleepTimerRemainingSeconds = minutes * 60L
+                                                showSleepTimerMenu = false
+                                                gestureValue = "Sleep timer: $minutes minutes"
                                             }
                                         )
                                     }
@@ -653,6 +943,8 @@ fun NexaPlayerView(
                     }
                 }
             }
+        }
+
         }
 
         // --- FULLY FUNCTIONAL DIALOGS ---
@@ -705,7 +997,37 @@ fun NexaPlayerView(
                 title = { Text("Playback Settings", color = PureWhite) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (serverOptions.isNotEmpty() && onServerSelected != null) {
+                            Box {
+                                Text(
+                                    text = "Server: ${serverOptions.getOrNull(selectedServerIndex) ?: "Choose server"}  ▾",
+                                    color = PureWhite,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showServerMenu = true }
+                                        .padding(vertical = 8.dp)
+                                )
+                                DropdownMenu(
+                                    expanded = showServerMenu,
+                                    onDismissRequest = { showServerMenu = false }
+                                ) {
+                                    serverOptions.forEachIndexed { index, option ->
+                                        DropdownMenuItem(
+                                            text = { Text("${index + 1}. $option", maxLines = 1) },
+                                            onClick = {
+                                                showServerMenu = false
+                                                onServerSelected(index)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Text("Active Stream Source: $serverHost", color = PrimaryGreen, fontSize = 12.sp)
+                        if (isServerResolving) {
+                            Text("Connecting to server…", color = MutedGray, fontSize = 12.sp)
+                        }
                         Text("Selected Quality: $currentQuality", color = PureWhite, fontSize = 13.sp)
                         Text("Playback Speed: ${currentSpeed}x", color = PureWhite, fontSize = 13.sp)
                         Text("Aspect Ratio Mode: $currentFitText", color = PureWhite, fontSize = 13.sp)

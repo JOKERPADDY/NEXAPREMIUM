@@ -60,6 +60,9 @@ class LocalDatabaseRepository @Inject constructor(
     suspend fun saveDownload(download: DownloadEntity) =
         downloadDao.insertDownload(download)
 
+    suspend fun updateDownloadTimestamp(id: String, timestamp: Long) =
+        downloadDao.updateTimestamp(id, timestamp)
+
     suspend fun deleteDownload(id: String) =
         downloadDao.deleteDownload(id)
 }

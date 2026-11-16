@@ -183,7 +183,15 @@ fun SearchScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
-                        items(state.results, key = { it.detailPath ?: it.id ?: it.title.orEmpty() }) { item ->
+                        items(
+                            state.results,
+                            key = { item ->
+                                item.detailPath?.takeIf { it.isNotBlank() }
+                                    ?: item.id?.takeIf { it.isNotBlank() }
+                                    ?: item.title?.takeIf { it.isNotBlank() }
+                                    ?: java.util.UUID.randomUUID().toString()
+                            }
+                        ) { item ->
                             SearchResultRow(item = item, onClick = {
                                 item.detailPath?.let { path -> onItemClick(path, item.effectiveSubjectType) }
                             })

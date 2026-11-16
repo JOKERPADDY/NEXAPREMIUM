@@ -36,6 +36,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -380,9 +381,23 @@ fun NexaPlayerView(
                 }
             }
             .pointerInput(isLocked) {
-                detectTapGestures {
-                    if (!isLocked) showControls = !showControls
-                }
+                detectTapGestures(
+                    onTap = {
+                        if (!isLocked) showControls = !showControls
+                    },
+                    onDoubleTap = { offset ->
+                        if (!isLocked) {
+                            val halfWidth = size.width / 2f
+                            if (offset.x < halfWidth) {
+                                player.seekTo((player.currentPosition - 10_000L).coerceAtLeast(0L))
+                                gestureValue = "-10s"
+                            } else {
+                                player.seekTo((player.currentPosition + 10_000L).coerceAtMost(duration))
+                                gestureValue = "+10s"
+                            }
+                        }
+                    }
+                )
             }
     ) {
         AndroidView(
@@ -665,7 +680,6 @@ fun NexaPlayerView(
                     }
                 }
 
-                if (sources.isNotEmpty()) {
                 // 2. MIDDLE LEFT OVERLAY (Screen Lock)
                 Column(
                     modifier = Modifier
@@ -712,33 +726,74 @@ fun NexaPlayerView(
                     )
                 }
 
-                // 4. BOTTOM CONTROLS & THIN SEEKBAR
+                // 4. BOTTOM CONTROLS & SEEKBAR / LIVE BADGE
+                val isLiveStream = remember(player.isCurrentMediaItemLive, duration, sources) {
+                    player.isCurrentMediaItemLive || duration <= 0L || sources.any { it.quality == "LIVE" || it.resolutions == "LIVE" }
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = formatTime(currentPosition),
-                            color = PureWhite,
-                            fontSize = 12.sp
-                        )
-                        ThinSeekBar(
-                            currentPosition = currentPosition,
-                            duration = duration,
-                            onSeek = { player.seekTo(it) },
-                            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                        )
-                        Text(
-                            text = formatTime(duration),
-                            color = PureWhite,
-                            fontSize = 12.sp
-                        )
+                    if (isLiveStream) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(PrimaryRed, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "LIVE STREAM",
+                                    color = PureWhite,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    player.seekToDefaultPosition()
+                                    player.playWhenReady = true
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryRed),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("GO LIVE", color = PureWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = formatTime(currentPosition),
+                                color = PureWhite,
+                                fontSize = 12.sp
+                            )
+                            ThinSeekBar(
+                                currentPosition = currentPosition,
+                                duration = duration,
+                                onSeek = { player.seekTo(it) },
+                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                            )
+                            Text(
+                                text = formatTime(duration),
+                                color = PureWhite,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
 
                     Row(
@@ -943,8 +998,6 @@ fun NexaPlayerView(
                     }
                 }
             }
-        }
-
         }
 
         // --- FULLY FUNCTIONAL DIALOGS ---

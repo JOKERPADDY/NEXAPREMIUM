@@ -73,7 +73,14 @@ fun TabContentScreen(
                     }
 
                     // Content blocks / carousels
-                    items(state.blocks, key = { it.blockId ?: it.title ?: java.util.UUID.randomUUID().toString() }) { block ->
+                    items(
+                        state.blocks,
+                        key = { block ->
+                            block.blockId?.takeIf { it.isNotBlank() }
+                                ?: block.title?.takeIf { it.isNotBlank() }
+                                ?: java.util.UUID.randomUUID().toString()
+                        }
+                    ) { block ->
                         val isLandscape = block.layout?.contains("landscape", ignoreCase = true) == true ||
                                 block.layout?.contains("banner", ignoreCase = true) == true ||
                                 (block.title?.contains("Recommended", ignoreCase = true) == true && block == state.blocks.firstOrNull())

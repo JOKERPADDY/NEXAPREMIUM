@@ -65,6 +65,36 @@ fun NexaNavHost(
             )
         }
 
+        composable(Screen.Livestream.route) {
+            LivestreamScreen(
+                onChannelClick = { channel, video ->
+                    val headersJson = com.google.gson.Gson().toJson(video.headers)
+                    navController.navigate(
+                        Screen.LivePlayer.createRoute(video.source, channel.name, headersJson)
+                    )
+                }
+            )
+        }
+
+        composable(
+            route = Screen.LivePlayer.route,
+            arguments = listOf(
+                navArgument("url") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType },
+                navArgument("headers") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { entry ->
+            val url = Uri.decode(entry.arguments?.getString("url").orEmpty())
+            val title = Uri.decode(entry.arguments?.getString("title").orEmpty())
+            val headersJson = Uri.decode(entry.arguments?.getString("headers").orEmpty())
+            LivePlayerScreen(
+                streamUrl = url,
+                channelName = title,
+                headersJson = headersJson,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(
             route = Screen.SectionItems.route,
             arguments = listOf(navArgument("title") { type = NavType.StringType })

@@ -76,7 +76,10 @@ fun LiveSportsRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(matches, key = { it.id }) { match ->
+                items(
+                    matches,
+                    key = { match -> match.id.takeIf { it.isNotBlank() } ?: match.title.takeIf { it.isNotBlank() } ?: java.util.UUID.randomUUID().toString() }
+                ) { match ->
                     val interactions = remember(match.id) { MutableInteractionSource() }
                     Column(
                         Modifier.width(220.dp)

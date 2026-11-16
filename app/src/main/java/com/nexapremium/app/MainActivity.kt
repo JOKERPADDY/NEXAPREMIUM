@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val showTopCategoryBar = currentRoute == Screen.Recommended.route ||
+                            currentRoute == Screen.Livestream.route ||
                             currentRoute == Screen.Movies.route ||
                             currentRoute == Screen.Series.route ||
                             currentRoute == Screen.Kids.route ||
@@ -89,6 +90,7 @@ class MainActivity : ComponentActivity() {
 
                     val showBottomNav = !inPipMode && currentRoute != Screen.Player.route &&
                             currentRoute != Screen.SportsPlayer.route &&
+                            currentRoute != Screen.LivePlayer.route &&
                             currentRoute != Screen.Splash.route &&
                             currentRoute?.startsWith("movie_detail") != true &&
                             currentRoute?.startsWith("series_detail") != true

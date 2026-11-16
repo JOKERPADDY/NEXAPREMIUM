@@ -14,8 +14,8 @@ android {
         applicationId = "com.nexapremium"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "v1.0.1"
+        versionCode = 3
+        versionName = "v1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.gson)
+    implementation(libs.jsoup)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

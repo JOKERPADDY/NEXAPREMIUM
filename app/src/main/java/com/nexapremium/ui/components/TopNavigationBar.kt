@@ -36,6 +36,7 @@ data class NavTabItem(
 
 val youcineNavTabs = listOf(
     NavTabItem("Recommended", Screen.Recommended.route),
+    NavTabItem("Livestream", Screen.Livestream.route),
     NavTabItem("Movies", Screen.Movies.route),
     NavTabItem("Series", Screen.Series.route),
     NavTabItem("Kids", Screen.Kids.route),

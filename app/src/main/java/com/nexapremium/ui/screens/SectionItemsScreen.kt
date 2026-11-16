@@ -76,7 +76,15 @@ fun SectionItemsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(items, key = { it.detailPath ?: it.id ?: it.title.orEmpty() }) { item ->
+                items(
+                    items,
+                    key = { item ->
+                        item.detailPath?.takeIf { it.isNotBlank() }
+                            ?: item.id?.takeIf { it.isNotBlank() }
+                            ?: item.title?.takeIf { it.isNotBlank() }
+                            ?: java.util.UUID.randomUUID().toString()
+                    }
+                ) { item ->
                     FocusableCard(
                         imageUrl = item.effectiveCoverUrl,
                         title = item.title.orEmpty(),

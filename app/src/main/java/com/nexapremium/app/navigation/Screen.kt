@@ -5,6 +5,7 @@ import android.net.Uri
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Recommended : Screen("recommended")
+    object Livestream : Screen("livestream")
     object Movies : Screen("movies")
     object Series : Screen("series")
     object Kids : Screen("kids")
@@ -51,6 +52,11 @@ sealed class Screen(val route: String) {
     object Downloads : Screen("downloads")
     object SportsPlayer : Screen("sports_player/{matchId}/{title}") {
         fun createRoute(matchId: String, title: String) = "sports_player/${android.net.Uri.encode(matchId)}/${android.net.Uri.encode(title)}"
+    }
+    object LivePlayer : Screen("live_player?url={url}&title={title}&headers={headers}") {
+        fun createRoute(url: String, title: String, headersJson: String = ""): String {
+            return "live_player?url=${Uri.encode(url)}&title=${Uri.encode(title)}&headers=${Uri.encode(headersJson)}"
+        }
     }
     object Settings : Screen("settings")
 }

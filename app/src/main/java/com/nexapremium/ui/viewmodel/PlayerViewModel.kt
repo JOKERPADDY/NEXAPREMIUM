@@ -47,7 +47,7 @@ class PlayerViewModel @Inject constructor(
 
     fun onPlaybackEnded(detailPath: String, season: Int, episode: Int) {
         viewModelScope.launch {
-            localDatabaseRepository.removeContinueWatching(detailPath)
+            localDatabaseRepository.removeContinueWatching(detailPath, season, episode)
             if (season <= 0 || episode <= 0 || !downloadPreferencesRepository.autoDeleteWatchedEpisodes.value) return@launch
             val episodeIdSuffix = "_S${season}E${episode}"
             val download = localDatabaseRepository.getAllDownloadsOnce().firstOrNull {
@@ -77,7 +77,7 @@ class PlayerViewModel @Inject constructor(
                     val playbackData = response.playbackData
                     val sources = playbackData.playableSources.ifEmpty { playbackData.effectiveSources }
                     if (sources.isNotEmpty()) {
-                        val saved = localDatabaseRepository.getContinueWatching(detailPath)
+                        val saved = localDatabaseRepository.getContinueWatching(detailPath, season, episode)
                         val resumePosition = saved?.positionMs?.takeIf {
                             it > 0L && (saved.durationMs <= 0L || saved.durationMs - it > 30_000L)
                         } ?: 0L
@@ -110,10 +110,11 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             if (durationMs <= 0L) return@launch
             if (positionMs >= durationMs - 30_000L) {
-                localDatabaseRepository.removeContinueWatching(detailPath)
+                localDatabaseRepository.removeContinueWatching(detailPath, season, episode)
                 return@launch
             }
             val entity = ContinueWatchingEntity(
+                playbackKey = ContinueWatchingEntity.playbackKey(detailPath, season, episode),
                 detailPath = detailPath,
                 title = title,
                 coverUrl = coverUrl,

@@ -53,6 +53,7 @@ import com.nexapremium.data.api.model.CaptionItemDto
 import com.nexapremium.data.api.model.MediaSourceDto
 import kotlinx.coroutines.delay
 import com.nexapremium.ui.components.TvIconButton
+import com.nexapremium.ui.components.isTelevisionDevice
 import com.nexapremium.ui.components.tvFocusOutline
 
 @Composable
@@ -155,6 +156,7 @@ fun NexaPlayerView(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val isTelevision = remember(context) { isTelevisionDevice(context) }
     val audioManager = remember(context) { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     var gestureValue by remember { mutableStateOf<String?>(null) }
     var brightness by remember(activity) {
@@ -287,8 +289,8 @@ fun NexaPlayerView(
         }
     }
 
-    LaunchedEffect(showControls, isPlaying) {
-        if (showControls && isPlaying && !isLocked) {
+    LaunchedEffect(showControls, isPlaying, isTelevision) {
+        if (showControls && isPlaying && !isLocked && !isTelevision) {
             delay(3000)
             showControls = false
         }
@@ -842,9 +844,14 @@ fun NexaPlayerView(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Aspect Ratio
+                            val fitInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable {
+                                modifier = Modifier
+                                    .clickable(
+                                        interactionSource = fitInteraction,
+                                        indication = null
+                                    ) {
                                     when (resizeMode) {
                                         AspectRatioFrameLayout.RESIZE_MODE_FIT -> {
                                             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -860,6 +867,8 @@ fun NexaPlayerView(
                                         }
                                     }
                                 }
+                                    .tvFocusOutline(fitInteraction, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 6.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.AspectRatio, contentDescription = null, tint = PureWhite, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))

@@ -25,7 +25,10 @@ object DatabaseModule {
             context,
             NexaDatabase::class.java,
             "nexapremium_db"
-        ).fallbackToDestructiveMigration().build()
+        )
+            .addMigrations(NexaDatabase.MIGRATION_3_4)
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

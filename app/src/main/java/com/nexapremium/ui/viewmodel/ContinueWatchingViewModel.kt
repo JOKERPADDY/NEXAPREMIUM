@@ -21,7 +21,7 @@ class ContinueWatchingViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    fun remove(detailPath: String) {
-        viewModelScope.launch { localDatabaseRepository.removeContinueWatching(detailPath) }
+    fun remove(playbackKey: String) {
+        viewModelScope.launch { localDatabaseRepository.removeContinueWatching(playbackKey) }
     }
 }

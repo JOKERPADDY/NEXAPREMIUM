@@ -51,17 +51,17 @@ fun ContinueWatchingScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(continueWatchingList, key = { it.detailPath }) { item ->
+            items(continueWatchingList, key = { it.playbackKey }) { item ->
                 Column {
                     Box {
                         FocusableCard(
                             imageUrl = item.coverUrl,
                             title = item.title,
-                            badgeText = if (item.seasonNumber > 0) "S${item.seasonNumber} · E${item.episodeNumber}" else null,
+                            badgeText = if (item.seasonNumber > 0 || item.episodeNumber > 0) "S${item.seasonNumber} E${item.episodeNumber}" else null,
                             onClick = { onItemClick(item) }
                         )
                         IconButton(
-                            onClick = { viewModel.remove(item.detailPath) },
+                            onClick = { viewModel.remove(item.playbackKey) },
                             modifier = Modifier.align(Alignment.TopEnd).size(36.dp)
                         ) {
                             Icon(Icons.Default.Close, contentDescription = "Remove from Continue Watching", tint = PureWhite)

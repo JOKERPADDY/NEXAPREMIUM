@@ -10,12 +10,12 @@ interface ContinueWatchingDao {
     @Query("SELECT * FROM continue_watching ORDER BY lastUpdated DESC")
     fun getAllContinueWatching(): Flow<List<ContinueWatchingEntity>>
 
-    @Query("SELECT * FROM continue_watching WHERE detailPath = :path LIMIT 1")
-    suspend fun getByDetailPath(path: String): ContinueWatchingEntity?
+    @Query("SELECT * FROM continue_watching WHERE playbackKey = :key LIMIT 1")
+    suspend fun getByPlaybackKey(key: String): ContinueWatchingEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: ContinueWatchingEntity)
 
-    @Query("DELETE FROM continue_watching WHERE detailPath = :path")
-    suspend fun deleteByDetailPath(path: String)
+    @Query("DELETE FROM continue_watching WHERE playbackKey = :key")
+    suspend fun deleteByPlaybackKey(key: String)
 }

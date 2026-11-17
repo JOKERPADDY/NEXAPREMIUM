@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nexapremium.data.filter.FamilyContentFilter
 import com.nexapremium.data.api.model.SubjectItemDto
 import com.nexapremium.data.repository.FamilyModeRepository
+import com.nexapremium.data.repository.RecentSearchesRepository
 import com.nexapremium.data.repository.SearchRepository
 import com.nexapremium.data.repository.SectionItemsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,11 +25,13 @@ sealed interface SearchUiState {
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val searchRepository: SearchRepository,
+    private val recentSearchesRepository: RecentSearchesRepository,
     private val familyModeRepository: FamilyModeRepository,
     private val sectionItemsRepository: SectionItemsRepository
 ) : ViewModel() {
 
     val searchQuery = MutableStateFlow("")
+    val recentSearches: StateFlow<List<String>> = recentSearchesRepository.recentSearches
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
     private var unfilteredResults: List<SubjectItemDto> = emptyList()
@@ -84,7 +87,26 @@ class SearchViewModel @Inject constructor(
 
     fun submitSearch() {
         val query = searchQuery.value.trim()
-        if (query.isBlank()) loadPopularSearches() else executeSearch(query)
+        if (query.isBlank()) {
+            loadPopularSearches()
+        } else {
+            recentSearchesRepository.add(query)
+            executeSearch(query)
+        }
+    }
+
+    fun searchRecent(query: String) {
+        searchQuery.value = query
+        recentSearchesRepository.add(query)
+        executeSearch(query)
+    }
+
+    fun removeRecentSearch(query: String) {
+        recentSearchesRepository.remove(query)
+    }
+
+    fun clearRecentSearches() {
+        recentSearchesRepository.clear()
     }
 
     private fun executeSearch(query: String) {

@@ -25,11 +25,14 @@ class LocalDatabaseRepository @Inject constructor(
     suspend fun saveContinueWatching(item: ContinueWatchingEntity) =
         continueWatchingDao.upsert(item)
 
-    suspend fun removeContinueWatching(detailPath: String) =
-        continueWatchingDao.deleteByDetailPath(detailPath)
+    suspend fun removeContinueWatching(playbackKey: String) =
+        continueWatchingDao.deleteByPlaybackKey(playbackKey)
 
-    suspend fun getContinueWatching(detailPath: String): ContinueWatchingEntity? =
-        continueWatchingDao.getByDetailPath(detailPath)
+    suspend fun removeContinueWatching(detailPath: String, season: Int, episode: Int) =
+        removeContinueWatching(ContinueWatchingEntity.playbackKey(detailPath, season, episode))
+
+    suspend fun getContinueWatching(detailPath: String, season: Int, episode: Int): ContinueWatchingEntity? =
+        continueWatchingDao.getByPlaybackKey(ContinueWatchingEntity.playbackKey(detailPath, season, episode))
 
     fun getMyListFlow(): Flow<List<MyListEntity>> =
         myListDao.getAllMyList()

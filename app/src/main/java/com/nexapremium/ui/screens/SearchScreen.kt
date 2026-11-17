@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -23,10 +24,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +71,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val recentSearches by viewModel.recentSearches.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -135,7 +139,56 @@ fun SearchScreen(
             }
         }
 
-        Spacer(Modifier.height(42.dp))
+        if (searchQuery.isBlank() && recentSearches.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Recent searches",
+                    color = PureWhite,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                androidx.compose.material3.TextButton(onClick = viewModel::clearRecentSearches) {
+                    Text("Clear", color = MutedGray, fontSize = 13.sp)
+                }
+            }
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 12.dp)
+            ) {
+                items(recentSearches, key = { it.lowercase() }) { query ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AssistChip(
+                            onClick = { viewModel.searchRecent(query) },
+                            label = { Text(query, maxLines = 1) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                        IconButton(
+                            onClick = { viewModel.removeRecentSearch(query) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove $query",
+                                tint = MutedGray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            Spacer(Modifier.height(24.dp))
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),

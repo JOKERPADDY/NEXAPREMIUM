@@ -16,23 +16,29 @@ import com.nexapremium.core.ui.theme.PureBlack
 import com.nexapremium.core.ui.theme.PureWhite
 import com.nexapremium.ui.components.FocusableButton
 import com.nexapremium.ui.components.CatalogLoadingSkeleton
+import com.nexapremium.ui.components.ContinueWatchingCarousel
 import com.nexapremium.ui.components.HeroBanner
 import com.nexapremium.ui.components.HorizontalCarousel
 import com.nexapremium.ui.viewmodel.TabContentViewModel
 import com.nexapremium.ui.viewmodel.TabUiState
+import com.nexapremium.data.db.entity.ContinueWatchingEntity
+import com.nexapremium.ui.viewmodel.ContinueWatchingViewModel
 
 @Composable
 fun TabContentScreen(
     tabName: String,
     onItemClick: (String, String) -> Unit,
     onSectionClick: (String) -> Unit,
-    onSportsClick: (String, String) -> Unit = { _, _ -> }
+    onSportsClick: (String, String) -> Unit = { _, _ -> },
+    onContinueWatchingClick: (ContinueWatchingEntity) -> Unit = {}
 ) {
     val viewModel: TabContentViewModel = hiltViewModel(
         key = tabName,
         creationCallback = { factory: TabContentViewModel.Factory -> factory.create(tabName) }
     )
     val uiState by viewModel.uiState.collectAsState()
+    val continueWatchingViewModel: ContinueWatchingViewModel = hiltViewModel()
+    val continueWatchingList by continueWatchingViewModel.continueWatchingList.collectAsState()
 
     Box(
         modifier = Modifier
@@ -62,6 +68,15 @@ fun TabContentScreen(
                                 banners = state.banners,
                                 onItemClick = onItemClick,
                                 modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        }
+                    }
+
+                    if (tabName.equals("recommended", ignoreCase = true) && continueWatchingList.isNotEmpty()) {
+                        item(key = "continue_watching") {
+                            ContinueWatchingCarousel(
+                                items = continueWatchingList,
+                                onItemClick = onContinueWatchingClick
                             )
                         }
                     }

@@ -47,7 +47,17 @@ fun NexaNavHost(
             RecommendedScreen(
                 onItemClick = onItemClick,
                 onSectionClick = onSectionClick,
-                onSportsClick = { id, title -> navController.navigate(Screen.SportsPlayer.createRoute(id, title)) }
+                onSportsClick = { id, title -> navController.navigate(Screen.SportsPlayer.createRoute(id, title)) },
+                onContinueWatchingClick = { item ->
+                    navController.navigate(
+                        Screen.Player.createRoute(
+                            item.detailPath,
+                            item.seasonNumber,
+                            item.episodeNumber,
+                            coverUrl = item.coverUrl
+                        )
+                    )
+                }
             )
         }
 

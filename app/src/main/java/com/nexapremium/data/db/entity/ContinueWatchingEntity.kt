@@ -5,7 +5,8 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "continue_watching")
 data class ContinueWatchingEntity(
-    @PrimaryKey val detailPath: String,
+    @PrimaryKey val playbackKey: String,
+    val detailPath: String,
     val title: String,
     val coverUrl: String,
     val subjectType: String, // "movie" or "series"
@@ -14,4 +15,13 @@ data class ContinueWatchingEntity(
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
     val lastUpdated: Long = System.currentTimeMillis()
-)
+) {
+    companion object {
+        fun playbackKey(detailPath: String, seasonNumber: Int, episodeNumber: Int): String =
+            if (seasonNumber > 0 || episodeNumber > 0) {
+                "$detailPath#S${seasonNumber}E${episodeNumber}"
+            } else {
+                detailPath
+            }
+    }
+}

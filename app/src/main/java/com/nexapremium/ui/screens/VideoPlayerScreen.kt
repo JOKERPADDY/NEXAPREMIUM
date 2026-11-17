@@ -103,10 +103,10 @@ fun VideoPlayerScreen(
             if (stateVal is PlayerUiState.Success) {
                 viewModel.saveProgress(
                     detailPath = detailPath,
-                    title = stateVal.playbackData.title ?: "",
+                    title = stateVal.playbackData.title ?: "Playing Title",
                     coverUrl = coverUrl,
                     positionMs = player.currentPosition,
-                    durationMs = player.duration.coerceAtLeast(1L),
+                    durationMs = player.duration,
                     season = season,
                     episode = episode
                 )

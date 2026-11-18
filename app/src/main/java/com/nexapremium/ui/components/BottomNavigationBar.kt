@@ -46,12 +46,6 @@ val bottomNavItems = listOf(
         unselectedIcon = Icons.Outlined.Home
     ),
     BottomNavItem(
-        title = "Continue",
-        route = Screen.ContinueWatching.route,
-        selectedIcon = Icons.Filled.History,
-        unselectedIcon = Icons.Outlined.History
-    ),
-    BottomNavItem(
         title = "Downloads",
         route = Screen.Downloads.route,
         selectedIcon = Icons.Filled.Download,

@@ -8,12 +8,15 @@ object FamilyContentFilter {
         "ecchi",
         "erotica",
         "erotic",
+        "eromanga",
+        "doujinshi",
         "fck",
         "fuck",
         "fucked",
         "gangbang",
         "hentai",
         "incest",
+        "jav",
         "mature",
         "nsfw",
         "nude",
@@ -21,6 +24,8 @@ object FamilyContentFilter {
         "orgasm",
         "porn",
         "pussy",
+        "r18",
+        "r-18",
         "rape",
         "raped",
         "seduction",
@@ -39,14 +44,20 @@ object FamilyContentFilter {
         "kowaremono",
         "kengan ashura",
         "sex doll",
-        "sex weather"
+        "sex weather",
+        "swamp stamp",
+        "momoiro bouenkyou",
+        "do you like big girls"
     )
 
     private val blockedTitles = setOf(
         "city girl",
         "desperate sexy runs babes",
         "mother s bargain",
-        "sexy girlfriend"
+        "sexy girlfriend",
+        "swamp stamp anime edition",
+        "momoiro bouenkyou",
+        "do you like big girls"
     )
 
     fun isAllowed(item: SubjectItemDto): Boolean {

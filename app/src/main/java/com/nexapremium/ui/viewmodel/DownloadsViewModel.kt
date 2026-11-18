@@ -1,5 +1,11 @@
 package com.nexapremium.ui.viewmodel
 
+import android.content.ContentValues
+import android.content.Context
+import android.media.MediaScannerConnection
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexapremium.data.db.entity.DownloadEntity
@@ -8,7 +14,9 @@ import com.nexapremium.data.download.TransferProgress
 import com.nexapremium.data.download.TransferStatus
 import com.nexapremium.data.repository.LocalDatabaseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -158,6 +166,96 @@ class DownloadsViewModel @Inject constructor(
                 appDownloadManager.cancel(state.entity)
                 localDatabaseRepository.deleteDownload(state.entity.id)
             }
+        }
+    }
+
+    fun saveToDevice(context: Context, downloadState: DownloadItemState, onResult: (Boolean, String) -> Unit) {
+        if (!downloadState.isCompleted) {
+            onResult(false, "Only completed downloads can be saved to device")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val srcFile = File(downloadState.entity.filePath).takeIf { it.exists() && it.length() > 0L }
+            if (srcFile == null) {
+                withContext(Dispatchers.Main) {
+                    onResult(false, "Downloaded file not found on disk")
+                }
+                return@launch
+            }
+
+            try {
+                val rawTitle = downloadState.entity.title
+                    .replace(Regex("\\s+\\(${Regex.escape(downloadState.entity.quality)}\\)$", RegexOption.IGNORE_CASE), "")
+                    .replace(Regex("_S\\d+E\\d+$", RegexOption.IGNORE_CASE), "")
+                val (season, episode) = downloadEpisodeNumbers(downloadState.entity.id)
+                val nameFormatted = if (episode > 0) "${rawTitle}_S${season}E${episode}" else rawTitle
+                val cleanName = nameFormatted.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+                val fileName = "$cleanName.mp4"
+
+                val success = saveFileToPublicStorage(context, srcFile, fileName)
+                withContext(Dispatchers.Main) {
+                    if (success) {
+                        onResult(true, "Saved to Downloads/NexaPremium/$fileName")
+                    } else {
+                        onResult(false, "Failed to save file to device storage")
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onResult(false, e.message ?: "Failed to save file")
+                }
+            }
+        }
+    }
+
+    private fun downloadEpisodeNumbers(id: String): Pair<Int, Int> {
+        val match = Regex("_S(\\d+)E(\\d+)$", RegexOption.IGNORE_CASE).find(id)
+        return (match?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0) to
+            (match?.groupValues?.getOrNull(2)?.toIntOrNull() ?: 0)
+    }
+
+    private fun saveFileToPublicStorage(context: Context, srcFile: File, fileName: String): Boolean {
+        return try {
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/NexaPremium")
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+            }
+
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+            } else {
+                resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+            }
+
+            if (uri != null) {
+                resolver.openOutputStream(uri)?.use { output ->
+                    srcFile.inputStream().use { input ->
+                        input.copyTo(output)
+                    }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentValues.clear()
+                    contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(uri, contentValues, null, null)
+                }
+                true
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val nexaDir = File(downloadsDir, "NexaPremium").apply { mkdirs() }
+                val destFile = File(nexaDir, fileName)
+                srcFile.copyTo(destFile, overwrite = true)
+                MediaScannerConnection.scanFile(context, arrayOf(destFile.absolutePath), arrayOf("video/mp4"), null)
+                true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 }

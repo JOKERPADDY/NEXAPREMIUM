@@ -1,5 +1,6 @@
 package com.nexapremium.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Pause
@@ -241,6 +244,11 @@ fun DownloadsScreen(
                             canMoveDown = queueIndex >= 0 && queueIndex < queue.lastIndex,
                             onRetry = { viewModel.retryDownload(itemState) },
                             onDelete = { pendingDelete = itemState },
+                            onSaveToDevice = {
+                                viewModel.saveToDevice(context, itemState) { _, message ->
+                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                }
+                            },
                             onOpenTitle = {
                                 val path = itemState.entity.detailPath
                                 onOpenTitle(path, downloadSubjectType(path))
@@ -264,6 +272,7 @@ private fun DownloadRow(
     canMoveDown: Boolean,
     onRetry: () -> Unit,
     onDelete: () -> Unit,
+    onSaveToDevice: () -> Unit,
     onOpenTitle: () -> Unit
 ) {
     val item = itemState.entity
@@ -395,14 +404,53 @@ private fun DownloadRow(
                 }
             }
 
-            TvIconButton(
-                image = Icons.Default.Delete,
-                contentDescription = "Delete download",
-                onClick = onDelete,
-                tint = MutedGray,
-                buttonSize = 44.dp,
-                iconSize = 22.dp
-            )
+            var showMenu by remember { mutableStateOf(false) }
+            Box {
+                TvIconButton(
+                    image = Icons.Default.MoreVert,
+                    contentDescription = "More options",
+                    onClick = { showMenu = true },
+                    tint = PureWhite,
+                    buttonSize = 44.dp,
+                    iconSize = 22.dp
+                )
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(DarkSurface)
+                ) {
+                    if (itemState.isCompleted) {
+                        DropdownMenuItem(
+                            text = { Text("Save to device", color = PureWhite) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.FileDownload,
+                                    contentDescription = null,
+                                    tint = PrimaryRed
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onSaveToDevice()
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("Delete download", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        }
+                    )
+                }
+            }
         }
     }
 }

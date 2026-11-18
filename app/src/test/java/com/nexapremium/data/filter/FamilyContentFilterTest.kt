@@ -19,7 +19,10 @@ class FamilyContentFilterTest {
             SubjectItemDto(title = "Sex Next Door", genres = listOf("Documentary")),
             SubjectItemDto(title = "Desperate Sexy Runs Babes", genres = listOf("Nollywood")),
             SubjectItemDto(title = "City Girl", genres = listOf("Romance")),
-            SubjectItemDto(title = "MOTHER'S BARGAIN", genres = listOf("Drama"))
+            SubjectItemDto(title = "MOTHER'S BARGAIN", genres = listOf("Drama")),
+            SubjectItemDto(title = "SWAMP STAMP Anime Edition", genres = listOf("Hentai")),
+            SubjectItemDto(title = "Momoiro Bouenkyou Anime...", genres = listOf("Ecchi")),
+            SubjectItemDto(title = "Do You Like Big Girls?", genres = listOf("Romance", "Adult"))
         )
 
         assertEquals(

@@ -43,7 +43,12 @@ fun SectionItemsScreen(
     val screenTitle by viewModel.title.collectAsState()
     val items by viewModel.items.collectAsState()
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val gridColumns = if (screenWidthDp < 600) GridCells.Fixed(3) else GridCells.Adaptive(minSize = 170.dp)
+    val isLargeScreen = screenWidthDp >= 840
+    val gridColumns = if (screenWidthDp < 600) {
+        GridCells.Fixed(3)
+    } else {
+        GridCells.Adaptive(minSize = if (isLargeScreen) 210.dp else 170.dp)
+    }
 
     LaunchedEffect(title) { viewModel.load(title) }
 
@@ -71,9 +76,9 @@ fun SectionItemsScreen(
         } else {
             LazyVerticalGrid(
                 columns = gridColumns,
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (isLargeScreen) 16.dp else 8.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isLargeScreen) 20.dp else 14.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(

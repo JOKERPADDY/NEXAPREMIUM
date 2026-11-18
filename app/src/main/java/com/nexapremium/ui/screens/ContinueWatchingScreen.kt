@@ -15,7 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
 import com.nexapremium.core.ui.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,9 +50,9 @@ fun ContinueWatchingScreen(
         }
 
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 120.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            columns = GridCells.Adaptive(minSize = 107.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(continueWatchingList, key = { it.playbackKey }) { item ->
                 Column {
@@ -58,6 +61,8 @@ fun ContinueWatchingScreen(
                             imageUrl = item.coverUrl,
                             title = item.title,
                             badgeText = if (item.seasonNumber > 0 || item.episodeNumber > 0) "S${item.seasonNumber} E${item.episodeNumber}" else null,
+                            aspectRatio = 0.71f,
+                            showTitle = false,
                             onClick = { onItemClick(item) }
                         )
                         IconButton(
@@ -75,6 +80,15 @@ fun ContinueWatchingScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
                         )
                     }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = item.title.ifBlank { "Continue episode" },
+                        color = PureWhite,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

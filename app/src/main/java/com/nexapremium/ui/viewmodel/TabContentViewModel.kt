@@ -8,6 +8,7 @@ import com.nexapremium.data.api.model.HomeResponseDto
 import com.nexapremium.data.api.model.SubjectItemDto
 import com.nexapremium.data.repository.FamilyModeRepository
 import com.nexapremium.data.repository.HomeRepository
+import com.nexapremium.data.repository.LocalDatabaseRepository
 import com.nexapremium.data.repository.SectionItemsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -32,17 +33,32 @@ class TabContentViewModel @AssistedInject constructor(
     private val homeRepository: HomeRepository,
     private val familyModeRepository: FamilyModeRepository,
     private val sectionItemsRepository: SectionItemsRepository,
+    private val localDatabaseRepository: LocalDatabaseRepository,
     @Assisted private val tabName: String
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TabUiState>(TabUiState.Loading)
     val uiState: StateFlow<TabUiState> = _uiState.asStateFlow()
     private var unfilteredContent: TabUiState.Success? = null
+    private var continueWatchingItems: List<com.nexapremium.data.db.entity.ContinueWatchingEntity> = emptyList()
 
     init {
         viewModelScope.launch {
+            localDatabaseRepository.getContinueWatchingFlow().collect { list ->
+                continueWatchingItems = list
+                unfilteredContent?.let { currentSuccess ->
+                    val enriched = enrichWithSmartRecommendations(currentSuccess)
+                    _uiState.value = filterContent(enriched, familyModeRepository.enabled.value)
+                }
+            }
+        }
+
+        viewModelScope.launch {
             familyModeRepository.enabled.collect { enabled ->
-                unfilteredContent?.let { _uiState.value = filterContent(it, enabled) }
+                unfilteredContent?.let { currentSuccess ->
+                    val enriched = enrichWithSmartRecommendations(currentSuccess)
+                    _uiState.value = filterContent(enriched, enabled)
+                }
             }
         }
         loadData()
@@ -194,7 +210,71 @@ class TabContentViewModel @AssistedInject constructor(
             }
         }
         unfilteredContent = content
-        _uiState.value = filterContent(content, familyModeRepository.enabled.value)
+        val enriched = enrichWithSmartRecommendations(content)
+        _uiState.value = filterContent(enriched, familyModeRepository.enabled.value)
+    }
+
+    private fun enrichWithSmartRecommendations(content: TabUiState.Success): TabUiState.Success {
+        if (!tabName.equals("recommended", ignoreCase = true) && !tabName.equals("home", ignoreCase = true)) {
+            return content
+        }
+
+        val baseBlocks = content.blocks
+        if (baseBlocks.isEmpty()) return content
+
+        val mutableBlocks = baseBlocks.toMutableList()
+        val allItems = baseBlocks.flatMap { it.items.orEmpty() }.distinctBy { it.detailPath ?: it.title }
+        if (allItems.isEmpty()) return content
+
+        // 1. "Because You Watched <Title>" Recommendation Row
+        val lastWatched = continueWatchingItems.firstOrNull()
+        if (lastWatched != null) {
+            val cleanTitle = lastWatched.title
+                .replace(Regex("_S\\d+E\\d+$", RegexOption.IGNORE_CASE), "")
+
+            val recommendedItems = allItems.filter { item ->
+                item.detailPath != lastWatched.detailPath &&
+                item.title?.equals(cleanTitle, ignoreCase = true) != true
+            }.shuffled().take(12)
+
+            if (recommendedItems.isNotEmpty()) {
+                val blockTitle = "Because You Watched \"$cleanTitle\" 🎬"
+                mutableBlocks.removeAll { it.blockId?.startsWith("because_you_watched") == true }
+
+                val insertIndex = (1).coerceAtMost(mutableBlocks.size)
+                mutableBlocks.add(
+                    insertIndex,
+                    HomeBlockDto(
+                        blockId = "because_you_watched_${lastWatched.playbackKey.hashCode()}",
+                        title = blockTitle,
+                        layout = "carousel",
+                        items = recommendedItems
+                    )
+                )
+            }
+        }
+
+        // 2. "Weekend Binge Specials 🍿" / "Top Picks For You ✨" Row
+        val dayOfWeek = java.time.LocalDate.now().dayOfWeek.value // 5 = Fri, 6 = Sat, 7 = Sun
+        val isWeekend = dayOfWeek >= 5
+        val smartTitle = if (isWeekend) "Weekend Binge Specials 🍿" else "Top Picks For You ✨"
+
+        val smartItems = allItems.shuffled().take(10)
+        if (smartItems.size >= 3) {
+            mutableBlocks.removeAll { it.blockId == "smart_weekend_picks" }
+            val insertIndex = (0).coerceAtMost(mutableBlocks.size)
+            mutableBlocks.add(
+                insertIndex,
+                HomeBlockDto(
+                    blockId = "smart_weekend_picks",
+                    title = smartTitle,
+                    layout = "carousel",
+                    items = smartItems
+                )
+            )
+        }
+
+        return content.copy(blocks = mutableBlocks)
     }
 
     private fun filterContent(content: TabUiState.Success, familyModeEnabled: Boolean) =

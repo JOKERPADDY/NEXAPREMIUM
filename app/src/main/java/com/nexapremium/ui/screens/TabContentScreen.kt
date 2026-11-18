@@ -72,18 +72,18 @@ fun TabContentScreen(
                         }
                     }
 
+                    if (tabName.equals("recommended", ignoreCase = true)) {
+                        item(key = "live_sports") {
+                            com.nexapremium.ui.components.LiveSportsRow(onMatchClick = { match -> onSportsClick(match.id, match.title) })
+                        }
+                    }
+
                     if (tabName.equals("recommended", ignoreCase = true) && continueWatchingList.isNotEmpty()) {
                         item(key = "continue_watching") {
                             ContinueWatchingCarousel(
                                 items = continueWatchingList,
                                 onItemClick = onContinueWatchingClick
                             )
-                        }
-                    }
-
-                    if (tabName.equals("recommended", ignoreCase = true)) {
-                        item(key = "live_sports") {
-                            com.nexapremium.ui.components.LiveSportsRow(onMatchClick = { match -> onSportsClick(match.id, match.title) })
                         }
                     }
 

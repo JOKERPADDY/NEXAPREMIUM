@@ -20,7 +20,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -185,12 +187,20 @@ fun ChannelCard(
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val statusLower = channel.status.lowercase().trim()
+    val isLive = statusLower.isEmpty() ||
+        statusLower == "online" ||
+        statusLower == "live" ||
+        statusLower == "active" ||
+        statusLower == "1" ||
+        (!statusLower.contains("offline") && !statusLower.contains("down") && !statusLower.contains("stop"))
 
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(if (isLive) 1f else 0.55f)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .tvFocusOutline(interactionSource, RoundedCornerShape(12.dp))
     ) {
@@ -198,38 +208,67 @@ fun ChannelCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp)
-                    .background(Color(0xFF1E1E1E))
+                    .height(110.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF2A2A2A),
+                                Color(0xFF141414)
+                            )
+                        )
+                    )
             ) {
-                SubcomposeAsyncImage(
-                    model = channel.image,
-                    contentDescription = channel.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    error = {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                if (channel.image.isNotBlank()) {
+                    SubcomposeAsyncImage(
+                        model = channel.image,
+                        contentDescription = channel.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(PrimaryRed.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = channel.name.take(2).uppercase(),
+                                    color = PrimaryRed,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = channel.name.take(2).uppercase(),
-                                color = PrimaryRed,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold
+                                text = channel.name,
+                                color = PureWhite.copy(alpha = 0.9f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
-                )
+                }
 
-                // LIVE badge
+                // LIVE / OFFLINE badge
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .padding(6.dp)
+                        .padding(8.dp)
                         .align(Alignment.TopStart)
-                        .background(PrimaryRed, RoundedCornerShape(4.dp))
+                        .background(if (isLive) PrimaryRed else Color.DarkGray, RoundedCornerShape(4.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Icon(
@@ -240,7 +279,7 @@ fun ChannelCard(
                     )
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
-                        text = "LIVE",
+                        text = if (isLive) "LIVE" else "OFFLINE",
                         color = PureWhite,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold
@@ -252,7 +291,7 @@ fun ChannelCard(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(6.dp)
+                            .padding(8.dp)
                             .align(Alignment.BottomEnd)
                             .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 4.dp, vertical = 2.dp)

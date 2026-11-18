@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,8 +33,15 @@ fun HorizontalCarousel(
 ) {
     if (items.isEmpty()) return
 
-    val cardWidth = if (isLandscape) 145.dp else 107.dp
+    val configuration = LocalConfiguration.current
+    val isLargeScreen = configuration.screenWidthDp >= 840
+    val cardWidth = if (isLandscape) {
+        if (isLargeScreen) 240.dp else 145.dp
+    } else {
+        if (isLargeScreen) 160.dp else 107.dp
+    }
     val aspectRatio = if (isLandscape) 1.6f else 0.71f
+    val spacing = if (isLargeScreen) 16.dp else 8.dp
 
     Column(modifier = modifier.padding(vertical = 8.dp)) {
         Row(
@@ -76,7 +84,7 @@ fun HorizontalCarousel(
 
         LazyRow(
             contentPadding = PaddingValues(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             items(items) { item ->
                 FocusableCard(

@@ -37,7 +37,7 @@ class NexaPlayerEngine @Inject constructor(
     @OptIn(UnstableApi::class)
     fun getOrCreatePlayer(context: Context): ExoPlayer {
         if (exoPlayer == null) {
-            exoPlayer = ExoPlayer.Builder(context).build()
+            exoPlayer = ExoPlayer.Builder(context.applicationContext).build()
         }
         return exoPlayer!!
     }
@@ -77,6 +77,15 @@ class NexaPlayerEngine @Inject constructor(
     ) {
         val player = getOrCreatePlayer(context)
         val mediaUrl = source.url ?: return
+
+        // Prevent redundant re-preparation if the player is already playing or buffering the exact same media URL
+        val currentUri = player.currentMediaItem?.localConfiguration?.uri?.toString()
+        if (currentUri == mediaUrl && player.playbackState != ExoPlayer.STATE_IDLE) {
+            if (startPositionMs > 0 && Math.abs(player.currentPosition - startPositionMs) > 2000L) {
+                player.seekTo(startPositionMs)
+            }
+            return
+        }
 
         val cleanPath = detailPath.trimStart('/')
         val refererPath = if (cleanPath.startsWith("movies/") || cleanPath.startsWith("series/")) cleanPath else "movies/$cleanPath"

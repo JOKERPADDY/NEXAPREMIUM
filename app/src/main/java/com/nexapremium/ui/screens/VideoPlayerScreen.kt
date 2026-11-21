@@ -108,7 +108,8 @@ fun VideoPlayerScreen(
                     positionMs = player.currentPosition,
                     durationMs = player.duration,
                     season = season,
-                    episode = episode
+                    episode = episode,
+                    force = true
                 )
             }
             playerEngine.release()
@@ -134,8 +135,9 @@ fun VideoPlayerScreen(
             is PlayerUiState.Success -> {
                 val sources = state.playbackData.playableSources.ifEmpty { state.playbackData.effectiveSources }
                 val title = state.playbackData.title ?: "Playing Title"
+                val primaryUrl = remember(sources) { sources.firstOrNull()?.url }
 
-                LaunchedEffect(sources, state.resumePositionMs) {
+                LaunchedEffect(detailPath, season, episode, primaryUrl) {
                     if (sources.isNotEmpty()) {
                         playerEngine.prepareMedia(context, detailPath, sources, state.resumePositionMs)
                     }

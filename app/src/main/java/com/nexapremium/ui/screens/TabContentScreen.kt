@@ -82,7 +82,10 @@ fun TabContentScreen(
                         item(key = "continue_watching") {
                             ContinueWatchingCarousel(
                                 items = continueWatchingList,
-                                onItemClick = onContinueWatchingClick
+                                onItemClick = onContinueWatchingClick,
+                                onItemRemove = { item ->
+                                    continueWatchingViewModel.remove(item.playbackKey)
+                                }
                             )
                         }
                     }

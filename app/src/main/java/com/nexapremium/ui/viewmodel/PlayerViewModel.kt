@@ -2,6 +2,7 @@ package com.nexapremium.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.os.SystemClock
 import com.nexapremium.data.api.model.CaptionItemDto
 import com.nexapremium.data.api.model.PlaybackDataDto
 import com.nexapremium.data.repository.LocalDatabaseRepository
@@ -106,9 +107,39 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun saveProgress(detailPath: String, title: String, coverUrl: String, positionMs: Long, durationMs: Long, season: Int = 0, episode: Int = 0) {
+    private var lastSavedPlaybackKey: String? = null
+    private var lastSavedPositionMs = -1L
+    private var lastSavedTimeMs = 0L
+
+    private companion object {
+        const val PROGRESS_SAVE_INTERVAL_MS = 15_000L
+    }
+
+    fun saveProgress(
+        detailPath: String,
+        title: String,
+        coverUrl: String,
+        positionMs: Long,
+        durationMs: Long,
+        season: Int = 0,
+        episode: Int = 0,
+        force: Boolean = false
+    ) {
+        if (durationMs <= 0L) return
+        val playbackKey = ContinueWatchingEntity.playbackKey(detailPath, season, episode)
+        val now = SystemClock.elapsedRealtime()
+        val samePlayback = lastSavedPlaybackKey == playbackKey
+        if (!force && samePlayback &&
+            now - lastSavedTimeMs < PROGRESS_SAVE_INTERVAL_MS &&
+            kotlin.math.abs(positionMs - lastSavedPositionMs) < PROGRESS_SAVE_INTERVAL_MS
+        ) {
+            return
+        }
+        lastSavedPlaybackKey = playbackKey
+        lastSavedTimeMs = now
+        lastSavedPositionMs = positionMs
+
         viewModelScope.launch {
-            if (durationMs <= 0L) return@launch
             if (positionMs >= durationMs - 30_000L) {
                 localDatabaseRepository.removeContinueWatching(detailPath, season, episode)
                 return@launch

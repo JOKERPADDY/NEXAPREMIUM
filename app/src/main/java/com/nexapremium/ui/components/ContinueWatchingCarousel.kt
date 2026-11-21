@@ -13,6 +13,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +32,8 @@ import com.nexapremium.data.db.entity.ContinueWatchingEntity
 fun ContinueWatchingCarousel(
     items: List<ContinueWatchingEntity>,
     onItemClick: (ContinueWatchingEntity) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onItemRemove: ((ContinueWatchingEntity) -> Unit)? = null
 ) {
     if (items.isEmpty()) return
 
@@ -36,6 +41,20 @@ fun ContinueWatchingCarousel(
     val isLargeScreen = configuration.screenWidthDp >= 840
     val cardWidth = if (isLargeScreen) 160.dp else 107.dp
     val spacing = if (isLargeScreen) 16.dp else 8.dp
+
+    var itemToRemove by remember { mutableStateOf<ContinueWatchingEntity?>(null) }
+
+    itemToRemove?.let { item ->
+        RemoveContinueWatchingDialog(
+            item = item,
+            onConfirm = {
+                onItemRemove?.invoke(item)
+            },
+            onDismiss = {
+                itemToRemove = null
+            }
+        )
+    }
 
     Column(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
@@ -60,6 +79,7 @@ fun ContinueWatchingCarousel(
                             null
                         },
                         onClick = { onItemClick(item) },
+                        onLongClick = { itemToRemove = item },
                         aspectRatio = 0.71f,
                         showTitle = false,
                         modifier = Modifier.fillMaxWidth()

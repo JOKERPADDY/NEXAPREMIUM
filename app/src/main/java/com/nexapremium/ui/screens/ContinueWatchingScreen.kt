@@ -14,6 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,6 +26,7 @@ import androidx.compose.ui.Alignment
 import com.nexapremium.core.ui.theme.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.nexapremium.ui.components.FocusableCard
+import com.nexapremium.ui.components.RemoveContinueWatchingDialog
 import com.nexapremium.ui.viewmodel.ContinueWatchingViewModel
 import com.nexapremium.data.db.entity.ContinueWatchingEntity
 
@@ -32,6 +36,19 @@ fun ContinueWatchingScreen(
     viewModel: ContinueWatchingViewModel = hiltViewModel()
 ) {
     val continueWatchingList by viewModel.continueWatchingList.collectAsState()
+    var itemToRemove by remember { mutableStateOf<ContinueWatchingEntity?>(null) }
+
+    itemToRemove?.let { item ->
+        RemoveContinueWatchingDialog(
+            item = item,
+            onConfirm = {
+                viewModel.remove(item.playbackKey)
+            },
+            onDismiss = {
+                itemToRemove = null
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -63,10 +80,11 @@ fun ContinueWatchingScreen(
                             badgeText = if (item.seasonNumber > 0 || item.episodeNumber > 0) "S${item.seasonNumber} E${item.episodeNumber}" else null,
                             aspectRatio = 0.71f,
                             showTitle = false,
-                            onClick = { onItemClick(item) }
+                            onClick = { onItemClick(item) },
+                            onLongClick = { itemToRemove = item }
                         )
                         IconButton(
-                            onClick = { viewModel.remove(item.playbackKey) },
+                            onClick = { itemToRemove = item },
                             modifier = Modifier.align(Alignment.TopEnd).size(36.dp)
                         ) {
                             Icon(Icons.Default.Close, contentDescription = "Remove from Continue Watching", tint = PureWhite)

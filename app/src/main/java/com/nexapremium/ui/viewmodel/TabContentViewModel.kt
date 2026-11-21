@@ -230,12 +230,25 @@ class TabContentViewModel @AssistedInject constructor(
         val lastWatched = continueWatchingItems.firstOrNull()
         if (lastWatched != null) {
             val cleanTitle = lastWatched.title
-                .replace(Regex("_S\\d+E\\d+$", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("[_\\s]+S\\d+E\\d+$", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("[_\\s]+Season\\s*\\d+.*$", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("[_\\s]+Episode\\s*\\d+.*$", RegexOption.IGNORE_CASE), "")
+                .trim()
+
+            val watchedItem = allItems.firstOrNull { 
+                it.detailPath == lastWatched.detailPath || 
+                it.title?.equals(cleanTitle, ignoreCase = true) == true 
+            }
+            val watchedGenres = watchedItem?.genres.orEmpty()
 
             val recommendedItems = allItems.filter { item ->
                 item.detailPath != lastWatched.detailPath &&
-                item.title?.equals(cleanTitle, ignoreCase = true) != true
-            }.shuffled().take(12)
+                item.title?.contains(cleanTitle, ignoreCase = true) != true
+            }.sortedByDescending { item ->
+                if (watchedGenres.isNotEmpty() && !item.genres.isNullOrEmpty()) {
+                    item.genres.count { it in watchedGenres }
+                } else 0
+            }.take(12)
 
             if (recommendedItems.isNotEmpty()) {
                 val blockTitle = "Because You Watched \"$cleanTitle\" 🎬"

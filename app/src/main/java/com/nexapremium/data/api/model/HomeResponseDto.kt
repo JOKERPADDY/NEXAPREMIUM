@@ -34,42 +34,102 @@ data class HomeBlockDto(
 
 data class SubjectItemDto(
     @SerializedName("id") val id: String? = null,
-    @SerializedName("subject_id") val subjectId: String? = null,
-    @SerializedName("detail_path") val detailPath: String? = null,
+    @SerializedName("subject_id") val subjectIdSnake: String? = null,
+    @SerializedName("subjectId") val subjectIdCamel: String? = null,
+    @SerializedName("detail_path") val detailPathSnake: String? = null,
+    @SerializedName("detailPath") val detailPathCamel: String? = null,
     @SerializedName("title") val title: String? = null,
     @SerializedName("kind") val kind: String? = null,
-    @SerializedName("subject_type") val subjectType: String? = null,
+    @SerializedName("subject_type") val subjectTypeSnake: String? = null,
+    @SerializedName("subjectType") val subjectTypeRaw: Any? = null,
     @SerializedName("poster_url") val posterUrl: String? = null,
     @SerializedName("backdrop_url") val backdropUrl: String? = null,
     @SerializedName("cover") val cover: CoverDto? = null,
-    @SerializedName("release_date") val releaseDate: String? = null,
-    @SerializedName("release_year") val releaseYear: Int? = null,
-    @SerializedName("duration_seconds") val durationSeconds: Int? = null,
+    @SerializedName("release_date") val releaseDateSnake: String? = null,
+    @SerializedName("releaseDate") val releaseDateCamel: String? = null,
+    @SerializedName("release_year") val releaseYearRaw: Int? = null,
+    @SerializedName("duration_seconds") val durationSecondsSnake: Int? = null,
+    @SerializedName("duration") val durationRaw: Int? = null,
     @SerializedName("score") val score: Double? = null,
     @SerializedName("rating") val rating: String? = null,
+    @SerializedName("imdbRatingValue") val imdbRatingValue: String? = null,
     @SerializedName("description") val description: String? = null,
     @SerializedName("country") val country: String? = null,
-    @SerializedName("genres") val genres: List<String>? = emptyList(),
+    @SerializedName("countryName") val countryName: String? = null,
+    @SerializedName("genres") val genresList: List<String>? = emptyList(),
+    @SerializedName("genre") val genreString: String? = null,
     @SerializedName("tags") val tags: List<TagDto>? = emptyList(),
+    @SerializedName("dubs") val dubs: List<DubDto>? = emptyList(),
     @SerializedName("isPornographic") val isPornographic: Boolean? = false,
     @SerializedName("webHighRisk") val webHighRisk: Boolean? = false,
-    @SerializedName("has_resource") val hasResource: Boolean? = true
+    @SerializedName("has_resource") val hasResourceSnake: Boolean? = null,
+    @SerializedName("hasResource") val hasResourceCamel: Boolean? = null
 ) {
+    val subjectId: String?
+        get() = subjectIdCamel ?: subjectIdSnake ?: id
+
+    val detailPath: String?
+        get() = detailPathCamel ?: detailPathSnake
+
+    val releaseDate: String?
+        get() = releaseDateCamel ?: releaseDateSnake
+
+    val releaseYear: Int?
+        get() = releaseYearRaw ?: releaseDate?.take(4)?.toIntOrNull()
+
+    val durationSeconds: Int?
+        get() = durationSecondsSnake ?: durationRaw
+
+    val effectiveScore: Double?
+        get() = score ?: imdbRatingValue?.toDoubleOrNull() ?: rating?.toDoubleOrNull()
+
     val effectiveId: String
-        get() = id ?: subjectId ?: ""
+        get() = subjectId ?: id ?: ""
 
     val effectiveCoverUrl: String?
         get() = posterUrl ?: cover?.url
 
     val effectiveSubjectType: String
-        get() = kind ?: subjectType ?: "movie"
+        get() {
+            if (!kind.isNullOrEmpty()) return kind
+            if (!subjectTypeSnake.isNullOrEmpty()) return subjectTypeSnake
+            if (subjectTypeRaw is Double) {
+                return if (subjectTypeRaw.toInt() == 2) "series" else "movie"
+            }
+            if (subjectTypeRaw is Long) {
+                return if (subjectTypeRaw.toInt() == 2) "series" else "movie"
+            }
+            if (subjectTypeRaw != null) {
+                val str = subjectTypeRaw.toString()
+                return if (str == "2" || str.equals("series", true) || str.equals("tv", true)) "series" else "movie"
+            }
+            return "movie"
+        }
+
+    val effectiveGenres: List<String>
+        get() {
+            if (!genresList.isNullOrEmpty()) return genresList
+            if (!genreString.isNullOrEmpty()) return genreString.split(",").map { it.trim() }
+            return emptyList()
+        }
+
+    val genres: List<String>?
+        get() = effectiveGenres
+
+    val subjectType: String?
+        get() = effectiveSubjectType
+
+    val hasResource: Boolean
+        get() = hasResourceCamel ?: hasResourceSnake ?: true
 
     val badgeText: String?
         get() {
             val tagText = tags?.firstOrNull()?.name
             if (!tagText.isNullOrEmpty()) return tagText
-            if (releaseYear != null && releaseYear > 0) return releaseYear.toString()
-            if (score != null && score > 0) return String.format(java.util.Locale.US, "%.1f", score)
+            val yr = releaseYear
+            if (yr != null && yr > 0) return yr.toString()
+            val sc = effectiveScore
+            if (sc != null && sc > 0) return String.format(java.util.Locale.US, "%.1f", sc)
             return null
         }
 }

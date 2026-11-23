@@ -1,7 +1,7 @@
 {
   "health": {
     "path": "/health",
-    "url": "https://movie-box-sepia-six.vercel.app/health",
+    "url": "https://movie-box-pi-lake.vercel.app/health",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -23,7 +23,7 @@
   },
   "v1_home": {
     "path": "/v1/home",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/home",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/home",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -7282,7 +7282,7 @@
   },
   "v1_browse": {
     "path": "/v1/browse",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/browse",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/browse",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -7647,7 +7647,7 @@
   },
   "v1_search_batman": {
     "path": "/v1/search?q=batman",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/search?q=batman",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/search?q=batman",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -7976,7 +7976,7 @@
   },
   "v1_search_suggestions_batman": {
     "path": "/v1/search/suggestions?q=batman",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/search/suggestions?q=batman",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/search/suggestions?q=batman",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -8007,7 +8007,7 @@
   },
   "v1_search_popular": {
     "path": "/v1/search/popular",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/search/popular",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/search/popular",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -8035,7 +8035,7 @@
   },
   "v1_rankings": {
     "path": "/v1/rankings",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/rankings",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/rankings",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -8096,7 +8096,7 @@
   },
   "v1_ranking_detail": {
     "path": "/v1/rankings/62133389738001440",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/rankings/62133389738001440",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/rankings/62133389738001440",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -8236,7 +8236,7 @@
   },
   "v1_catalog_series_filters": {
     "path": "/v1/catalog/series/filters",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/catalog/series/filters",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/catalog/series/filters",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -8681,7 +8681,7 @@
   },
   "v1_catalog_movies_filters": {
     "path": "/v1/catalog/movies/filters",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/catalog/movies/filters",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/catalog/movies/filters",
     "status_code": 404,
     "headers": {
       "Age": "0",
@@ -8703,7 +8703,7 @@
   },
   "v1_catalog_series": {
     "path": "/v1/catalog/series?page=1",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/catalog/series?page=1",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/catalog/series?page=1",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -9254,7 +9254,7 @@
   },
   "v1_catalog_movies": {
     "path": "/v1/catalog/movies?page=1",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/catalog/movies?page=1",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/catalog/movies?page=1",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -9770,7 +9770,7 @@
   },
   "v1_collections_dynamic": {
     "path": "/v1/collections/popular-series",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/collections/popular-series",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/collections/popular-series",
     "status_code": 404,
     "headers": {
       "Age": "0",
@@ -9792,7 +9792,7 @@
   },
   "v1_movie_detail": {
     "path": "/v1/titles/batman-MenTqxvHqCa",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -9835,7 +9835,7 @@
   },
   "v1_movie_recommendations": {
     "path": "/v1/titles/batman-MenTqxvHqCa/recommendations?page=1",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/recommendations?page=1",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/recommendations?page=1",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10085,7 +10085,7 @@
   },
   "v1_movie_playback": {
     "path": "/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10170,7 +10170,7 @@
   },
   "v1_series_detail": {
     "path": "/v1/titles/batman-4gNci8rCyt3",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10251,7 +10251,7 @@
   },
   "v1_series_episodes": {
     "path": "/v1/titles/batman-4gNci8rCyt3/episodes?season=1",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes?season=1",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes?season=1",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10432,7 +10432,7 @@
   },
   "v1_series_playback": {
     "path": "/v1/titles/batman-4gNci8rCyt3/playback?season=1&episode=1",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3/playback?season=1&episode=1",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3/playback?season=1&episode=1",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10517,7 +10517,7 @@
   },
   "v1_movie_captions": {
     "path": "/v1/titles/batman-MenTqxvHqCa/captions?stream_id=4279869683869909208&season=0&episode=0",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/captions?stream_id=4279869683869909208&season=0&episode=0",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/captions?stream_id=4279869683869909208&season=0&episode=0",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10681,7 +10681,7 @@
   },
   "auth_test_none": {
     "path": "/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
     "status_code": 200,
     "headers": {
       "Age": "0",
@@ -10766,7 +10766,7 @@
   },
   "auth_test_bearer": {
     "path": "/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
     "status_code": 200,
     "headers": {
       "Cache-Control": "public, max-age=0, must-revalidate",
@@ -10850,7 +10850,7 @@
   },
   "auth_test_custom": {
     "path": "/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0",
     "status_code": 200,
     "headers": {
       "Cache-Control": "public, max-age=0, must-revalidate",
@@ -10934,7 +10934,7 @@
   },
   "v1_search_missing_q_422": {
     "path": "/v1/search",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/search",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/search",
     "status_code": 422,
     "headers": {
       "Age": "0",
@@ -10966,7 +10966,7 @@
   },
   "v1_title_not_found_404": {
     "path": "/v1/titles/invalid-nonexistent-title-xyz999",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/invalid-nonexistent-title-xyz999",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/invalid-nonexistent-title-xyz999",
     "status_code": 404,
     "headers": {
       "Age": "0",
@@ -10988,7 +10988,7 @@
   },
   "v1_episodes_missing_season_422": {
     "path": "/v1/titles/batman-4gNci8rCyt3/episodes",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes",
     "status_code": 422,
     "headers": {
       "Age": "0",
@@ -11020,7 +11020,7 @@
   },
   "v1_captions_missing_stream_id_422": {
     "path": "/v1/titles/batman-MenTqxvHqCa/captions",
-    "url": "https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/captions",
+    "url": "https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/captions",
     "status_code": 422,
     "headers": {
       "Age": "0",

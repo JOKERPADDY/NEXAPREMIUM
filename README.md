@@ -48,7 +48,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Backend
 
-The app currently uses `https://movie-box-sepia-six.vercel.app` for catalog, title detail, playback, captions, and search requests. Its base URL is configured in `app/src/main/java/com/nexapremium/di/NetworkModule.kt`.
+The app currently uses `https://movie-box-pi-lake.vercel.app` for catalog, title detail, playback, captions, and search requests. Its base URL is configured in `app/src/main/java/com/nexapremium/di/NetworkModule.kt`.
 
 ## Project layout
 

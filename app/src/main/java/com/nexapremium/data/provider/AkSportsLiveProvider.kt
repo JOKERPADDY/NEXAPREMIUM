@@ -58,7 +58,7 @@ class AkSportsLiveProvider @Inject constructor(
     private val resolverStreamLocks = ConcurrentHashMap<String, Mutex>()
 
     companion object {
-        private const val STREAM_RESOLVER_URL = "https://streamed-pk-resolver-5rlc.vercel.app"
+        private const val STREAM_RESOLVER_URL = "https://streamed-pk-resolver-theta.vercel.app"
         private const val RESOLVER_STREAM_CACHE_TTL_MS = 60_000L
         private const val LIVE_WINDOW_AFTER_START_MS = 6 * 60 * 60 * 1000L
         private const val LIVE_WINDOW_BEFORE_START_MS = 15 * 60 * 1000L

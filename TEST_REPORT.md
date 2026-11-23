@@ -1,7 +1,7 @@
 # NEXAPREMIUM — TESTING & VERIFICATION REPORT
 
 **Target Application:** NEXAPREMIUM (`com.nexapremium`)  
-**Backend Host:** `https://movie-box-sepia-six.vercel.app`  
+**Backend Host:** `https://movie-box-pi-lake.vercel.app`  
 **QA Lead:** Agent 6 (QA / Performance Engineer)  
 
 ---

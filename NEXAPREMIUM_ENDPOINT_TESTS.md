@@ -1,6 +1,6 @@
 # NEXAPREMIUM — BACKEND ENDPOINT TESTING & VERIFICATION REPORT
 
-**Target Base URL:** `https://movie-box-sepia-six.vercel.app`  
+**Target Base URL:** `https://movie-box-pi-lake.vercel.app`  
 **Audit Execution Date:** November 2026  
 **Testing Tooling:** Automated Python Probing Engine (`urllib.request`)  
 
@@ -43,7 +43,7 @@
 ## 2. DETAILED TEST CASES & VERIFIED PAYLOAD ANALYSIS
 
 ### Test Case: `health`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/health`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/health`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `592.01 ms`
@@ -59,7 +59,7 @@
 ---
 
 ### Test Case: `v1_home`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/home`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/home`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1064.89 ms`
@@ -103,7 +103,7 @@
 ---
 
 ### Test Case: `v1_browse`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/browse`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/browse`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `813.44 ms`
@@ -147,7 +147,7 @@
 ---
 
 ### Test Case: `v1_search_batman`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/search?q=batman`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/search?q=batman`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1470.7 ms`
@@ -191,7 +191,7 @@
 ---
 
 ### Test Case: `v1_search_suggestions_batman`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/search/suggestions?q=batman`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/search/suggestions?q=batman`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `769.24 ms`
@@ -216,7 +216,7 @@
 ---
 
 ### Test Case: `v1_search_popular`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/search/popular`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/search/popular`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `975.26 ms`
@@ -238,7 +238,7 @@
 ---
 
 ### Test Case: `v1_rankings`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/rankings`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/rankings`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `665.08 ms`
@@ -282,7 +282,7 @@
 ---
 
 ### Test Case: `v1_ranking_detail`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/rankings/62133389738001440`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/rankings/62133389738001440`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1038.95 ms`
@@ -326,7 +326,7 @@
 ---
 
 ### Test Case: `v1_catalog_series_filters`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/catalog/series/filters`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/catalog/series/filters`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `693.06 ms`
@@ -370,7 +370,7 @@
 ---
 
 ### Test Case: `v1_catalog_movies_filters`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/catalog/movies/filters`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/catalog/movies/filters`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `404`
 - **Response Latency:** `735.93 ms`
@@ -386,7 +386,7 @@
 ---
 
 ### Test Case: `v1_catalog_series`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/catalog/series?page=1`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/catalog/series?page=1`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1279.23 ms`
@@ -430,7 +430,7 @@
 ---
 
 ### Test Case: `v1_catalog_movies`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/catalog/movies?page=1`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/catalog/movies?page=1`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1206.88 ms`
@@ -474,7 +474,7 @@
 ---
 
 ### Test Case: `v1_collections_dynamic`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/collections/popular-series`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/collections/popular-series`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `404`
 - **Response Latency:** `688.59 ms`
@@ -490,7 +490,7 @@
 ---
 
 ### Test Case: `v1_movie_detail`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `773.7 ms`
@@ -527,7 +527,7 @@
 ---
 
 ### Test Case: `v1_movie_recommendations`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/recommendations?page=1`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/recommendations?page=1`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1120.59 ms`
@@ -571,7 +571,7 @@
 ---
 
 ### Test Case: `v1_movie_playback`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `761.55 ms`
@@ -615,7 +615,7 @@
 ---
 
 ### Test Case: `v1_series_detail`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `6853.05 ms`
@@ -659,7 +659,7 @@
 ---
 
 ### Test Case: `v1_series_episodes`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes?season=1`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes?season=1`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `669.84 ms`
@@ -703,7 +703,7 @@
 ---
 
 ### Test Case: `v1_series_playback`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3/playback?season=1&episode=1`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3/playback?season=1&episode=1`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `1017.12 ms`
@@ -747,7 +747,7 @@
 ---
 
 ### Test Case: `v1_movie_captions`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/captions?stream_id=4279869683869909208&season=0&episode=0`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/captions?stream_id=4279869683869909208&season=0&episode=0`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `852.83 ms`
@@ -791,7 +791,7 @@
 ---
 
 ### Test Case: `auth_test_none`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `791.69 ms`
@@ -835,7 +835,7 @@
 ---
 
 ### Test Case: `auth_test_bearer`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `802.77 ms`
@@ -879,7 +879,7 @@
 ---
 
 ### Test Case: `auth_test_custom`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/playback?season=0&episode=0`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `200`
 - **Response Latency:** `773.46 ms`
@@ -923,7 +923,7 @@
 ---
 
 ### Test Case: `v1_search_missing_q_422`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/search`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/search`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `422`
 - **Response Latency:** `949.41 ms`
@@ -949,7 +949,7 @@
 ---
 
 ### Test Case: `v1_title_not_found_404`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/invalid-nonexistent-title-xyz999`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/invalid-nonexistent-title-xyz999`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `404`
 - **Response Latency:** `1266.16 ms`
@@ -965,7 +965,7 @@
 ---
 
 ### Test Case: `v1_episodes_missing_season_422`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-4gNci8rCyt3/episodes`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `422`
 - **Response Latency:** `662.88 ms`
@@ -991,7 +991,7 @@
 ---
 
 ### Test Case: `v1_captions_missing_stream_id_422`
-- **Full Target URL:** `https://movie-box-sepia-six.vercel.app/v1/titles/batman-MenTqxvHqCa/captions`
+- **Full Target URL:** `https://movie-box-pi-lake.vercel.app/v1/titles/batman-MenTqxvHqCa/captions`
 - **HTTP Method:** `GET`
 - **HTTP Status Code:** `422`
 - **Response Latency:** `730.41 ms`

@@ -24,8 +24,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +45,11 @@ fun AppUpdateDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val confirmFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        confirmFocusRequester.requestFocus()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -114,6 +123,7 @@ fun AppUpdateDialog(
                         context.startActivity(fallbackIntent)
                     }
                 },
+                modifier = Modifier.focusRequester(confirmFocusRequester),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryRed),
                 shape = RoundedCornerShape(8.dp)
             ) {

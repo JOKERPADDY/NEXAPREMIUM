@@ -38,13 +38,29 @@ class DetailRepository @Inject constructor(
                 item.effectiveSubjectType.equals("tv", true)
             MovieDetailResponseDto(
                 directTitle = item,
-                directSeasons = if (isSeries) listOf(SeasonDto(number = 1)) else emptyList()
+                directSeasons = if (isSeries) listOf(SeasonDto(se = 1, numberField = 1)) else emptyList()
             )
         }
     }
 
     suspend fun getSeriesEpisodes(detailPath: String, season: Int = 1): Result<List<EpisodeDto>> = runCatching {
-        apiService.getSeriesEpisodes(normalizeTitlePath(detailPath), season)
+        val detailObj = apiService.getSeriesEpisodes(normalizeTitlePath(detailPath), season).detailResponse
+        val seasons = detailObj.seasons ?: emptyList()
+        val seasonObj = seasons.find { it.number == season } ?: seasons.firstOrNull()
+        val maxEp = seasonObj?.episodeCount ?: 0
+        if (maxEp > 0) {
+            (1..maxEp).map { epNum ->
+                EpisodeDto(
+                    episodeId = "${detailPath}_S${season}E${epNum}",
+                    episodeNumber = epNum,
+                    number = epNum,
+                    seasonNumber = season,
+                    title = "Episode $epNum"
+                )
+            }
+        } else {
+            emptyList()
+        }
     }
 
     suspend fun getRecommendations(detailPath: String, page: Int = 1): Result<HomeResponseDto> = runCatching {

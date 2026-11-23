@@ -64,7 +64,7 @@ interface NexaApiService {
     suspend fun getSeriesEpisodes(
         @Path(value = "path", encoded = true) detailPath: String,
         @Query("season") season: Int = 1
-    ): List<EpisodeDto>
+    ): MovieDetailResponseDto
 
     @GET("v1/titles/{path}/recommendations")
     suspend fun getRecommendations(

@@ -31,7 +31,7 @@
   - ADB: Operational (`platform-tools/adb.exe`)
   - Google Services: Verified at `C:\Users\Thawne-2\Downloads\google-services (1).json` (`com.nexapremium`)
 - **Backend API Integration Contract:**
-  - Base URL: `https://movie-box-sepia-six.vercel.app`
+  - Base URL: `https://movie-box-pi-lake.vercel.app`
   - OpenAPI Spec: OpenAPI 3.1.0 downloaded (`NEXAPREMIUM_OPENAPI.json`)
   - Endpoint Audit: 16 endpoints verified (`NEXAPREMIUM_API_AUDIT.md`)
   - Test Matrix: 27 test cases executed (`NEXAPREMIUM_ENDPOINT_TESTS.md`)

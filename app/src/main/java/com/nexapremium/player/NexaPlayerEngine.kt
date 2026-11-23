@@ -2,16 +2,23 @@ package com.nexapremium.player
 
 import android.content.Context
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.nexapremium.data.api.NexaHeaderInterceptor
 import com.nexapremium.data.api.model.MediaSourceDto
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,21 +30,42 @@ class NexaPlayerEngine @Inject constructor(
 
     /**
      * Specialized OkHttpClient instance for media streaming.
-     * Strips NexaHeaderInterceptor which injects "Accept: application/json",
-     * allowing video CDNs to serve binary MP4 streams without HTTP 406/403 errors.
+     * Strips NexaHeaderInterceptor (which injects "Accept: application/json") and
+     * HttpLoggingInterceptor (which creates header logging locks during continuous fetches),
+     * enabling smooth binary MP4 stream delivery on TV hardware.
      */
     private val mediaOkHttpClient: OkHttpClient by lazy {
         okHttpClient.newBuilder()
             .apply {
-                interceptors().removeAll { it is NexaHeaderInterceptor }
+                interceptors().removeAll { it is NexaHeaderInterceptor || it is HttpLoggingInterceptor }
             }
+            .connectionPool(ConnectionPool(8, 5, TimeUnit.MINUTES))
+            .retryOnConnectionFailure(true)
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 
     @OptIn(UnstableApi::class)
     fun getOrCreatePlayer(context: Context): ExoPlayer {
         if (exoPlayer == null) {
-            exoPlayer = ExoPlayer.Builder(context.applicationContext).build()
+            val renderersFactory = DefaultRenderersFactory(context.applicationContext)
+                .setEnableDecoderFallback(true)
+
+            val loadControl = DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                    /* minBufferMs = */ 30_000,
+                    /* maxBufferMs = */ 60_000,
+                    /* bufferForPlaybackMs = */ 3_000,
+                    /* bufferForPlaybackAfterRebufferMs = */ 5_000
+                )
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .setBackBuffer(30_000, true)
+                .build()
+
+            exoPlayer = ExoPlayer.Builder(context.applicationContext, renderersFactory)
+                .setLoadControl(loadControl)
+                .build()
         }
         return exoPlayer!!
     }
@@ -78,14 +106,18 @@ class NexaPlayerEngine @Inject constructor(
         val player = getOrCreatePlayer(context)
         val mediaUrl = source.url ?: return
 
-        // Prevent redundant re-preparation if the player is already playing or buffering the exact same media URL
+        // Prevent redundant re-preparation if the player is actively playing or buffering the exact same media URL
         val currentUri = player.currentMediaItem?.localConfiguration?.uri?.toString()
-        if (currentUri == mediaUrl && player.playbackState != ExoPlayer.STATE_IDLE) {
+        val isActivelyPlayingOrBuffering = (player.playbackState == ExoPlayer.STATE_READY || player.playbackState == ExoPlayer.STATE_BUFFERING) && player.playWhenReady
+        if (currentUri == mediaUrl && isActivelyPlayingOrBuffering) {
             if (startPositionMs > 0 && Math.abs(player.currentPosition - startPositionMs) > 2000L) {
                 player.seekTo(startPositionMs)
             }
             return
         }
+
+        // Reset playback parameters to default state when changing media items
+        player.playbackParameters = PlaybackParameters.DEFAULT
 
         val cleanPath = detailPath.trimStart('/')
         val refererPath = if (cleanPath.startsWith("movies/") || cleanPath.startsWith("series/")) cleanPath else "movies/$cleanPath"
@@ -122,6 +154,7 @@ class NexaPlayerEngine @Inject constructor(
                 }
             }
             .build()
+
         val mediaSource = if (isHls) {
             HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         } else {

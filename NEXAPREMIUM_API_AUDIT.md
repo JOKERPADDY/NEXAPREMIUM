@@ -1,6 +1,6 @@
 # NEXAPREMIUM — COMPLETE BACKEND API AUDIT & SPECIFICATION
 
-**Target Service:** `https://movie-box-sepia-six.vercel.app`  
+**Target Service:** `https://movie-box-pi-lake.vercel.app`  
 **API Title:** MovieBox scraper  
 **API Version:** 1.0.0  
 **OpenAPI Version:** 3.1.0  

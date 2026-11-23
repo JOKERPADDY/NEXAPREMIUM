@@ -245,8 +245,9 @@ class TabContentViewModel @AssistedInject constructor(
                 item.detailPath != lastWatched.detailPath &&
                 item.title?.contains(cleanTitle, ignoreCase = true) != true
             }.sortedByDescending { item ->
-                if (watchedGenres.isNotEmpty() && !item.genres.isNullOrEmpty()) {
-                    item.genres.count { it in watchedGenres }
+                val itemGenres = item.genres
+                if (watchedGenres.isNotEmpty() && !itemGenres.isNullOrEmpty()) {
+                    itemGenres.count { it in watchedGenres }
                 } else 0
             }.take(12)
 

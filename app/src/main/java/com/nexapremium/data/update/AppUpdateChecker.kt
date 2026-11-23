@@ -1,7 +1,11 @@
 package com.nexapremium.data.update
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import com.nexapremium.BuildConfig
+import com.nexapremium.ui.components.isTelevisionDevice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -26,9 +30,15 @@ object AppUpdateChecker {
 
     suspend fun checkUpdate(context: Context, client: OkHttpClient = OkHttpClient()): AppUpdateInfo = withContext(Dispatchers.IO) {
         val currentVersion = try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "v1.0.1"
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            packageInfo.versionName?.takeIf { it.isNotBlank() } ?: BuildConfig.VERSION_NAME
         } catch (e: Exception) {
-            "v1.0.1"
+            BuildConfig.VERSION_NAME
         }
 
         try {
@@ -36,6 +46,7 @@ object AppUpdateChecker {
                 .url(GITHUB_LATEST_RELEASE_URL)
                 .header("Accept", "application/vnd.github.v3+json")
                 .header("User-Agent", "NexaPremium-AndroidApp")
+                .header("Cache-Control", "no-cache")
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -60,14 +71,25 @@ object AppUpdateChecker {
                 var apkDownloadUrl = htmlUrl
                 val assets = json.optJSONArray("assets")
                 if (assets != null && assets.length() > 0) {
+                    val isTv = isTelevisionDevice(context)
+                    var bestUrl = ""
                     for (i in 0 until assets.length()) {
                         val asset = assets.getJSONObject(i)
                         val name = asset.optString("name", "").lowercase()
                         val downloadUrl = asset.optString("browser_download_url", "")
                         if (name.endsWith(".apk") && downloadUrl.isNotBlank()) {
-                            apkDownloadUrl = downloadUrl
-                            break
+                            if (isTv && (name.contains("tv") || name.contains("leanback") || name.contains("fire"))) {
+                                bestUrl = downloadUrl
+                                break
+                            } else if (!isTv && !name.contains("tv") && !name.contains("leanback")) {
+                                if (bestUrl.isBlank()) bestUrl = downloadUrl
+                            } else if (bestUrl.isBlank()) {
+                                bestUrl = downloadUrl
+                            }
                         }
+                    }
+                    if (bestUrl.isNotBlank()) {
+                        apkDownloadUrl = bestUrl
                     }
                 }
 
@@ -91,11 +113,15 @@ object AppUpdateChecker {
 
     private fun isNewerVersion(latest: String, current: String): Boolean {
         if (latest.isBlank() || current.isBlank()) return false
-        if (latest == current) return false
+        if (latest.equals(current, ignoreCase = true)) return false
 
         try {
             val latestParts = latest.split(".").mapNotNull { it.takeWhile { char -> char.isDigit() }.toIntOrNull() }
             val currentParts = current.split(".").mapNotNull { it.takeWhile { char -> char.isDigit() }.toIntOrNull() }
+
+            if (latestParts.isEmpty() || currentParts.isEmpty()) {
+                return latest.compareTo(current, ignoreCase = true) > 0
+            }
 
             val maxLength = maxOf(latestParts.size, currentParts.size)
             for (i in 0 until maxLength) {

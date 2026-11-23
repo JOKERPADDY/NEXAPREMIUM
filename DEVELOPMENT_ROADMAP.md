@@ -8,7 +8,7 @@
 ## MILESTONE 1 — PHASE 1: INSPECTION & PLANNING (COMPLETED)
 - [x] Task 1.1: Inspect local development environment (Java 26, Android SDK 34-37, ADB).
 - [x] Task 1.2: Verify `google-services (1).json` package name (`com.nexapremium`).
-- [x] Task 1.3: Audit backend API (`https://movie-box-sepia-six.vercel.app`) and extract OpenAPI schema (`NEXAPREMIUM_OPENAPI.json`).
+- [x] Task 1.3: Audit backend API (`https://movie-box-pi-lake.vercel.app`) and extract OpenAPI schema (`NEXAPREMIUM_OPENAPI.json`).
 - [x] Task 1.4: Execute live endpoint test battery and record response samples (`NEXAPREMIUM_ENDPOINT_TESTS.md` & `NEXAPREMIUM_RESPONSE_SAMPLES.json`).
 - [x] Task 1.5: Define Clean Architecture, 6-Agent file ownership matrix, and color palette (`#000000`, `#141414`, `#1E1E1E`, `#E50914`).
 - [x] Task 1.6: Create initial coordinator documentation (`PROJECT_STATUS.md`, `ARCHITECTURE.md`, `AGENT_ASSIGNMENTS.md`, `DEVELOPMENT_ROADMAP.md`, `TEST_REPORT.md`, `KNOWN_ISSUES.md`).

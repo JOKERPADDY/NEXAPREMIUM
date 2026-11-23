@@ -114,12 +114,12 @@ class DetailViewModel @Inject constructor(
                             originalTitle = titleItem.title,
                             description = titleItem.description,
                             releaseDate = titleItem.releaseDate,
-                            releaseYear = titleItem.releaseYear ?: titleItem.releaseDate?.take(4)?.toIntOrNull(),
+                            releaseYear = titleItem.releaseYear,
                             durationMinutes = titleItem.durationSeconds?.let { it / 60 },
-                            score = titleItem.score ?: titleItem.rating?.toDoubleOrNull() ?: 0.0,
+                            score = titleItem.effectiveScore ?: 0.0,
                             cover = CoverDto(url = titleItem.effectiveCoverUrl),
                             backdrop = CoverDto(url = titleItem.backdropUrl ?: titleItem.effectiveCoverUrl),
-                            genres = titleItem.genres?.map { TagDto(name = it) } ?: emptyList(),
+                            genres = titleItem.effectiveGenres.map { TagDto(name = it) },
                             actors = detailObj.cast ?: emptyList(),
                             directors = emptyList()
                         )
@@ -127,8 +127,17 @@ class DetailViewModel @Inject constructor(
 
                     if (movieDetailDto != null) {
                         val dubs = detailObj.dubs ?: emptyList()
-                        val seasons = detailObj.seasons ?: emptyList()
-                        val initialSeason = seasons.firstOrNull()?.number ?: 0
+                        val rawSeasons = detailObj.seasons ?: emptyList()
+                        val isSeries = titleItem?.effectiveSubjectType.equals("series", true) ||
+                            titleItem?.effectiveSubjectType.equals("tv", true) ||
+                            rawSeasons.any { it.number > 0 }
+
+                        val seasons = if (isSeries) {
+                            rawSeasons.filter { it.number > 0 }
+                                .ifEmpty { listOf(SeasonDto(se = 1, numberField = 1)) }
+                        } else emptyList()
+
+                        val initialSeason = if (isSeries) (seasons.firstOrNull()?.number ?: 1) else 0
 
                         val screenState = DetailScreenState(
                             movieDetail = movieDetailDto,
@@ -139,7 +148,21 @@ class DetailViewModel @Inject constructor(
                         )
                         _uiState.value = DetailUiState.Success(screenState)
 
-                        if (seasons.isNotEmpty()) {
+                        if (isSeries) {
+                            val seasonObj = seasons.find { it.number == initialSeason } ?: seasons.firstOrNull()
+                            val maxEp = seasonObj?.episodeCount ?: 0
+                            val fallbackEpisodes = if (maxEp > 0) {
+                                (1..maxEp).map { epNum ->
+                                    EpisodeDto(
+                                        episodeId = "${detailPath}_S${initialSeason}E${epNum}",
+                                        episodeNumber = epNum,
+                                        number = epNum,
+                                        seasonNumber = initialSeason,
+                                        title = "Episode $epNum"
+                                    )
+                                }
+                            } else emptyList()
+                            _uiState.value = DetailUiState.Success(screenState.copy(episodes = fallbackEpisodes))
                             loadEpisodes(detailPath, initialSeason)
                         }
                         loadRecommendations(detailPath)
@@ -161,7 +184,25 @@ class DetailViewModel @Inject constructor(
     fun selectSeason(detailPath: String, seasonNumber: Int) {
         val currentState = _uiState.value
         if (currentState is DetailUiState.Success) {
-            _uiState.value = DetailUiState.Success(currentState.data.copy(selectedSeason = seasonNumber))
+            val seasonObj = currentState.data.seasons.find { it.number == seasonNumber } ?: currentState.data.seasons.firstOrNull()
+            val maxEp = seasonObj?.episodeCount ?: 0
+            val fallbackEpisodes = if (maxEp > 0) {
+                (1..maxEp).map { epNum ->
+                    EpisodeDto(
+                        episodeId = "${detailPath}_S${seasonNumber}E${epNum}",
+                        episodeNumber = epNum,
+                        number = epNum,
+                        seasonNumber = seasonNumber,
+                        title = "Episode $epNum"
+                    )
+                }
+            } else emptyList()
+            _uiState.value = DetailUiState.Success(
+                currentState.data.copy(
+                    selectedSeason = seasonNumber,
+                    episodes = fallbackEpisodes
+                )
+            )
             loadEpisodes(detailPath, seasonNumber)
         }
     }
@@ -178,7 +219,7 @@ class DetailViewModel @Inject constructor(
             detailRepository.getSeriesEpisodes(detailPath, season)
                 .onSuccess { episodeList ->
                     val currentState = _uiState.value
-                    if (currentState is DetailUiState.Success) {
+                    if (currentState is DetailUiState.Success && episodeList.isNotEmpty()) {
                         _uiState.value = DetailUiState.Success(currentState.data.copy(episodes = episodeList))
                     }
                 }
